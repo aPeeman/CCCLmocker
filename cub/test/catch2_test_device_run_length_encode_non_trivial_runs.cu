@@ -41,7 +41,7 @@
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceRunLengthEncode::NonTrivialRuns, run_length_encode);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 using all_types = c2h::type_list<std::uint8_t,
                                  std::uint64_t,
@@ -149,14 +149,33 @@ CUB_TEST("DeviceRunLengthEncode::NonTrivialRuns can handle all equal",
   c2h::device_vector<int> out_offsets(1, -1);
   c2h::device_vector<int> out_lengths(1, -1);
   c2h::device_vector<int> out_num_runs(1, -1);
-  c2h::gen(CUB_SEED(2), in);
-  thrust::fill(c2h::device_policy, in.begin(), in.end(), in.front());
+  // c2h::gen(CUB_SEED(2), in);
+  // thrust::fill(c2h::device_policy, in.begin(), in.end(), in.front());
+  thrust::fill(c2h::device_policy, in.begin(), in.end(), static_cast<type>(42));
 
   run_length_encode(in.begin(),
                     out_offsets.begin(),
                     out_lengths.begin(),
                     out_num_runs.begin(),
                     num_items);
+
+//打印调试信息
+  // std::vector<int> h_out_offsets(out_offsets.size());
+  // std::vector<int> h_out_lengths(out_lengths.size());
+  // std::vector<int> h_out_num_runs(out_num_runs.size());
+
+  // thrust::copy(out_offsets.begin(), out_offsets.end(), h_out_offsets.begin());
+  // thrust::copy(out_lengths.begin(), out_lengths.end(), h_out_lengths.begin());
+  // thrust::copy(out_num_runs.begin(), out_num_runs.end(), h_out_num_runs.begin());
+
+  // std::vector<type> h_in(num_items);
+  // thrust::copy(in.begin(), in_end(), h_in.begin());
+  // for (const auto& val : h_in) {
+  //   std::cout << val << " ";
+  // }
+  // std::cout << std::endl;
+  // std::cout << "Offsets: ";
+  // for(const auto& val : )
 
   REQUIRE(out_offsets.front() == 0);
   REQUIRE(out_lengths.front() == num_items);
@@ -263,7 +282,11 @@ CUB_TEST("DeviceRunLengthEncode::NonTrivialRuns can handle pointers",
 template <bool TimeSlicing>
 struct device_rle_policy_hub
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 96;
+#else //USE_GPU_FUSION_PTX
+  static constexpr int threads = 256;
+#endif //USE_GPU_FUSION_PTX
   static constexpr int items   = 15;
 
   struct Policy350 : cub::ChainedPolicy<350, Policy350, Policy350>

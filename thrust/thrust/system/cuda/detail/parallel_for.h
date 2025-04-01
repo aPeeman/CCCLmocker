@@ -48,6 +48,8 @@ THRUST_NAMESPACE_BEGIN
 
 namespace cuda_cub {
 
+#ifdef USE_GPU_FUSION_THRUST
+
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived,
           class F,
@@ -77,6 +79,71 @@ parallel_for(execution_policy<Derived> &policy,
   ));
   // clang-format on
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived,
+          class F,
+          class Size>
+void _CCCL_HOST_DEVICE
+parallel_for(execution_policy<Derived> &policy,
+             F                          f,
+             Size                       count)
+{
+  if (count == 0)
+  {
+    return;
+  }
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (cudaStream_t stream = cuda_cub::stream(policy);
+     cudaError_t status = cub::DeviceFor::Bulk(count, f, stream);
+     cuda_cub::throw_on_error(status, "parallel_for failed");
+     status = cuda_cub::synchronize_optional(policy);
+     cuda_cub::throw_on_error(status, "parallel_for: failed to synchronize");),
+     // CDP sequential impl:
+    (for (Size idx = 0; idx != count; ++idx)
+      {
+        f(idx);
+      } 
+    ));
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static void par(execution_policy<Derived>& policy, F f, Size count)
+    {
+    
+     cudaStream_t stream = cuda_cub::stream(policy);
+     cudaError_t status = cub::DeviceFor::Bulk(count, f, stream);
+     cuda_cub::throw_on_error(status, "parallel_for failed");
+     status = cuda_cub::synchronize_optional(policy);
+     cuda_cub::throw_on_error(status, "parallel_for: failed to synchronize");
+    }
+    __device__
+    static void par(execution_policy<Derived>& policy, F f, Size count)
+    {
+      for (Size idx = 0; idx != count; ++idx) 
+      {
+        f(idx);
+      }      
+    }
+    __device__
+    static void seq(execution_policy<Derived>& policy, F f, Size count) 
+    {
+      for (Size idx = 0; idx != count; ++idx) 
+      {
+        f(idx);
+      }
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, f, count);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, f, count);
+  #endif  //THRUST_RDC_ENABLED
+#endif  //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 } // namespace cuda_cub
 

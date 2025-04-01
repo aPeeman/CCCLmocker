@@ -1207,6 +1207,7 @@ int CompareDeviceResults(
  * Verify the contents of a device array match those
  * of a host array
  */
+
 template <typename S, typename T>
 int CompareDeviceResults(
     S *h_reference,

@@ -236,6 +236,7 @@ THRUST_RUNTIME_FUNCTION OutputIt copy_if(
 //-------------------------
 // Thrust API entry points
 //-------------------------
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived, class InputIterator, class OutputIterator, class Predicate>
 OutputIterator _CCCL_HOST_DEVICE copy_if(
@@ -245,7 +246,49 @@ OutputIterator _CCCL_HOST_DEVICE copy_if(
     (return detail::copy_if(policy, first, last, static_cast<cub::NullType*>(nullptr), result, pred);),
     (return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, result, pred);));
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class InputIterator, class OutputIterator, class Predicate>
+OutputIterator _CCCL_HOST_DEVICE copy_if(
+  execution_policy<Derived>& policy, InputIterator first, InputIterator last, OutputIterator result, Predicate pred)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (return detail::copy_if(policy, first, last, static_cast<cub::NullType*>(nullptr), result, pred);),
+     // CDP sequential impl:
+    (return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, result, pred);
+    ));
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static OutputIterator par(execution_policy<Derived>& policy, InputIterator first, InputIterator last, OutputIterator result, Predicate pred)
+    {
+      return detail::copy_if(policy, first, last, static_cast<cub::NullType*>(nullptr), result, pred);  
+    }
+    __device__
+    static OutputIterator par(execution_policy<Derived>& policy, InputIterator first, InputIterator last, OutputIterator result, Predicate pred)
+    {
+      return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, result, pred);
+    }
+    __device__
+    static OutputIterator seq(execution_policy<Derived>& policy, InputIterator first, InputIterator last, OutputIterator result, Predicate pred) 
+    {
+      return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, result, pred);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, result, pred);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, result, pred);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
 
+}
+#endif //USE_GPU_FUSION_THRUST
+
+
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived, class InputIterator, class StencilIterator, class OutputIterator, class Predicate>
 OutputIterator _CCCL_HOST_DEVICE copy_if(
@@ -259,7 +302,66 @@ OutputIterator _CCCL_HOST_DEVICE copy_if(
   THRUST_CDP_DISPATCH((return detail::copy_if(policy, first, last, stencil, result, pred);),
                       (return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, stencil, result, pred);));
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class InputIterator, class StencilIterator, class OutputIterator, class Predicate>
+OutputIterator _CCCL_HOST_DEVICE copy_if(
+  execution_policy<Derived>& policy,
+  InputIterator first,
+  InputIterator last,
+  StencilIterator stencil,
+  OutputIterator result,
+  Predicate pred)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (return detail::copy_if(policy, first, last, stencil, result, pred);),
+     // CDP sequential impl:
+    (return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, stencil, result, pred);
+    ));
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static OutputIterator par(  execution_policy<Derived>& policy,
+  InputIterator first,
+  InputIterator last,
+  StencilIterator stencil,
+  OutputIterator result,
+  Predicate pred)
+    {
+      return detail::copy_if(policy, first, last, stencil, result, pred);
+    }
+    __device__
+    static OutputIterator par(  execution_policy<Derived>& policy,
+  InputIterator first,
+  InputIterator last,
+  StencilIterator stencil,
+  OutputIterator result,
+  Predicate pred)
+    {
+      return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, stencil, result, pred);
+    }
+    __device__
+    static OutputIterator seq(  execution_policy<Derived>& policy,
+  InputIterator first,
+  InputIterator last,
+  StencilIterator stencil,
+  OutputIterator result,
+  Predicate pred) 
+    {
+      return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, stencil, result, pred);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, stencil, result, pred);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, stencil, result, pred);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
 
+#endif //USE_GPU_FUSION_THRUST
 } // namespace cuda_cub
 THRUST_NAMESPACE_END
 

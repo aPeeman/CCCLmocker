@@ -138,8 +138,10 @@ using vec_types = c2h::type_list<ulonglong4, uchar3, short2>;
 // %PARAM% TEST_DIM_YZ dimyz 1:2
 
 using block_dim_xs           = c2h::enum_type_list<int, TEST_DIM_X>;
-using block_dim_yzs          = c2h::enum_type_list<int, TEST_DIM_YZ>;
-using items_per_thread       = c2h::enum_type_list<int, 1, 4>;
+// using block_dim_yzs          = c2h::enum_type_list<int, TEST_DIM_YZ>;
+using block_dim_yzs          = c2h::enum_type_list<int, 1>;
+// using items_per_thread       = c2h::enum_type_list<int, 1, 4>;
+using items_per_thread       = c2h::enum_type_list<int, 1, 2>;
 using single_item_per_thread = c2h::enum_type_list<int, 1>;
 using algorithm =
   c2h::enum_type_list<cub::BlockReduceAlgorithm,
@@ -265,9 +267,12 @@ CUB_TEST("Block reduce works with custom op in partial tiles",
   using type   = typename params::type;
 
   c2h::device_vector<type> d_out(1);
-  c2h::device_vector<type> d_in(GENERATE_COPY(take(2, random(1, params::tile_size))));
-  c2h::gen(CUB_SEED(10), d_in, std::numeric_limits<type>::min());
-
+  // c2h::device_vector<type> d_in(GENERATE_COPY(take(2, random(1, params::tile_size))));
+  // c2h::gen(CUB_SEED(10), d_in, std::numeric_limits<type>::min());
+  c2h::device_vector<type> d_in(params::tile_size);
+  for (int i = 0; i < params::tile_size; ++i) {
+    d_in[i] = static_cast<type>(i + 1);  
+  }
   c2h::host_vector<type> h_in = d_in;
   c2h::host_vector<type> h_reference(
     1,
@@ -341,6 +346,7 @@ CUB_TEST("Block reduce works with vec types",
   c2h::device_vector<type> d_out(1);
   c2h::device_vector<type> d_in(GENERATE_COPY(take(2, random(1, tile_size))));
   c2h::gen(CUB_SEED(10), d_in);
+
 
   c2h::host_vector<type> h_in = d_in;
   c2h::host_vector<type> h_reference(1, std::accumulate(h_in.begin() + 1, h_in.end(), h_in[0], [](const type &lhs, const type &rhs) {

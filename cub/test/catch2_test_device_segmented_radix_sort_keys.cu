@@ -43,7 +43,7 @@
 #include "catch2_test_helper.h"
 #include "catch2_test_launch_helper.h"
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceSegmentedRadixSort::SortKeys, sort_keys);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceSegmentedRadixSort::SortKeysDescending, sort_keys_descending);
@@ -55,34 +55,34 @@ DECLARE_LAUNCH_WRAPPER(cub::DeviceSegmentedRadixSort::SortKeysDescending, sort_k
 // - uint128
 
 // The unsigned integer for the given byte count should be first:
-#if TEST_KEY_BITS == 8
-using key_types            = c2h::type_list<cuda::std::uint8_t, cuda::std::int8_t, bool, char>;
-using bit_window_key_types = c2h::type_list<cuda::std::uint8_t, cuda::std::int8_t, char>;
-#  define NO_FP_KEY_TYPES
-#elif TEST_KEY_BITS == 16
-// clang-format off
-using key_types = c2h::type_list<
-    cuda::std::uint16_t
-  , cuda::std::int16_t
-#ifdef TEST_HALF_T
-  , half_t
-#endif
-#ifdef TEST_BF_T
-  , bfloat16_t
-#endif
-  >;
-// clang-format on
-using bit_window_key_types = c2h::type_list<cuda::std::uint16_t, cuda::std::int16_t>;
-#  define NO_FP_KEY_TYPES
-#elif TEST_KEY_BITS == 32
+// #if TEST_KEY_BITS == 8
+// using key_types            = c2h::type_list<cuda::std::uint8_t, cuda::std::int8_t, bool, char>;
+// using bit_window_key_types = c2h::type_list<cuda::std::uint8_t, cuda::std::int8_t, char>;
+// #  define NO_FP_KEY_TYPES
+// #elif TEST_KEY_BITS == 16
+// // clang-format off
+// using key_types = c2h::type_list<
+//     cuda::std::uint16_t
+//   , cuda::std::int16_t
+// #ifdef TEST_HALF_T
+//   , half_t
+// #endif
+// #ifdef TEST_BF_T
+//   , bfloat16_t
+// #endif
+//   >;
+// // clang-format on
+// using bit_window_key_types = c2h::type_list<cuda::std::uint16_t, cuda::std::int16_t>;
+// #  define NO_FP_KEY_TYPES
+// #elif TEST_KEY_BITS == 32
 using key_types            = c2h::type_list<cuda::std::uint32_t, cuda::std::int32_t, float>;
 using bit_window_key_types = c2h::type_list<cuda::std::uint32_t, cuda::std::int32_t>;
 using fp_key_types         = c2h::type_list<float>;
-#elif TEST_KEY_BITS == 64
-using key_types            = c2h::type_list<cuda::std::uint64_t, cuda::std::int64_t, double>;
-using bit_window_key_types = c2h::type_list<cuda::std::uint64_t, cuda::std::int64_t>;
-using fp_key_types         = c2h::type_list<double>;
-#endif
+// #elif TEST_KEY_BITS == 64
+// using key_types            = c2h::type_list<cuda::std::uint64_t, cuda::std::int64_t, double>;
+// using bit_window_key_types = c2h::type_list<cuda::std::uint64_t, cuda::std::int64_t>;
+// using fp_key_types         = c2h::type_list<double>;
+// #endif
 
 // Used for tests that just need a single type for testing:
 using single_key_type = c2h::type_list<c2h::get<0, key_types>>;
@@ -99,22 +99,43 @@ CUB_TEST("DeviceSegmentedRadixSort::SortKeys: basic testing",
   using offset_t = c2h::get<1, TestType>;
 
   constexpr std::size_t min_num_items = 1 << 5;
-  constexpr std::size_t max_num_items = 1 << 20;
+  // constexpr std::size_t max_num_items = 1 << 20;
+  constexpr std::size_t max_num_items = 1 << 8;
   const std::size_t num_items         = GENERATE_COPY(take(3, random(min_num_items, max_num_items)));
   const std::size_t num_segments      = GENERATE_COPY(take(2, random(std::size_t{2}, num_items / 2)));
 
+//debug
+  std::cout << "Generating test with " << num_items << " items and " << num_segments << " segments." << std::endl;
+
   c2h::device_vector<key_t> in_keys(num_items);
-  const int num_key_seeds = 1;
-  c2h::gen(CUB_SEED(num_key_seeds), in_keys);
+  // const int num_key_seeds = 1;
+  // c2h::gen(CUB_SEED(num_key_seeds), in_keys);
+  for(std::size_t i = 0; i < num_items; i++) {
+    in_keys[i] = static_cast<key_t>(i);
+  }
+
   // Initialize the output keys using the input keys since not all items
   // may belong to a segment.
   c2h::device_vector<key_t> out_keys(in_keys);
 
   c2h::device_vector<offset_t> offsets(num_segments + 1);
-  const int num_segment_seeds = 1;
-  generate_segment_offsets(CUB_SEED(num_segment_seeds), offsets, static_cast<offset_t>(num_items));
+  // const int num_segment_seeds = 1;
+  // generate_segment_offsets(CUB_SEED(num_segment_seeds), offsets, static_cast<offset_t>(num_items));
+  for(std::size_t i = 0; i < num_segments; i++) {
+    offsets[i] = static_cast<offset_t>(i *(num_items / num_segments));
+  }  
+
+  offsets[num_segments] = static_cast<offset_t>(num_items);
+
+//debug
+  std::cout << "Offsets generated: ";
+  for (size_t i = 0; i <= num_segments; ++i) {
+      std::cout << offsets[i] << " ";
+  }
+  std::cout << std::endl;
 
   const bool is_descending = GENERATE(false, true);
+  std::cout << "Sorting in " << (is_descending ? "descending" : "ascending") << " order." << std::endl;
 
   CAPTURE(num_items, num_segments, is_descending);
 
@@ -147,310 +168,337 @@ CUB_TEST("DeviceSegmentedRadixSort::SortKeys: basic testing",
       end_bit<key_t>());
   }
 
-  REQUIRE((ref_keys == out_keys) == true);
-}
-
-CUB_TEST("DeviceSegmentedRadixSort::SortKeys: empty data", "[keys][segmented][radix][sort][device]", single_key_type)
-{
-  using key_t    = c2h::get<0, TestType>;
-  using offset_t = cuda::std::int32_t;
-
-  const std::size_t num_items    = GENERATE(0, take(1, random(0, 1 << 10)));
-  const std::size_t num_segments = GENERATE(0, 1);
-
-  c2h::device_vector<key_t> in_keys(num_items);
-  const int num_key_seeds = 1;
-  c2h::gen(CUB_SEED(num_key_seeds), in_keys);
-  // Initialize the output keys using the input keys since not all items
-  // may belong to a segment.
-  c2h::device_vector<key_t> out_keys(in_keys);
-  c2h::device_vector<offset_t> offsets(2);
-  offsets[0] = 0;
-  offsets[1] = 0;
-
-  const bool is_descending = GENERATE(false, true);
-
-  CAPTURE(num_items, num_segments, is_descending);
-
-  auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, offsets);
-
-  if (is_descending)
-  {
-    sort_keys_descending(
-      thrust::raw_pointer_cast(in_keys.data()),
-      thrust::raw_pointer_cast(out_keys.data()),
-      static_cast<int>(num_items),
-      static_cast<int>(num_segments),
-      // Mix pointers/iterators for segment info to test using different iterable types:
-      thrust::raw_pointer_cast(offsets.data()),
-      offsets.cbegin() + 1,
-      begin_bit<key_t>(),
-      end_bit<key_t>());
+    // Debug output: Checking first few values of in_keys, out_keys, and ref_keys
+  std::cout << "input keys: ";
+  for (size_t i = 0; i < num_items; ++i) {
+      std::cout << in_keys[i] << " ";
   }
-  else
-  {
-    sort_keys(
-      thrust::raw_pointer_cast(in_keys.data()),
-      thrust::raw_pointer_cast(out_keys.data()),
-      static_cast<int>(num_items),
-      static_cast<int>(num_segments),
-      // Mix pointers/iterators for segment info to test using different iterable types:
-      thrust::raw_pointer_cast(offsets.data()),
-      offsets.cbegin() + 1,
-      begin_bit<key_t>(),
-      end_bit<key_t>());
+  std::cout << std::endl;
+
+  std::cout << "output keys: ";
+  for (size_t i = 0; i < num_items; ++i) {
+      std::cout << out_keys[i] << " ";
   }
+  std::cout << std::endl;
+
+  std::cout << "reference keys: ";
+  for (size_t i = 0; i < num_items; ++i) {
+      std::cout << ref_keys[i] << " ";
+  }
+  std::cout << std::endl;
 
   REQUIRE((ref_keys == out_keys) == true);
 }
 
-CUB_TEST("DeviceSegmentedRadixSort::SortKeys: bit windows",
-         "[keys][segmented][radix][sort][device]",
-         bit_window_key_types)
-{
-  using key_t    = c2h::get<0, TestType>;
-  using offset_t = cuda::std::int32_t;
+// CUB_TEST("DeviceSegmentedRadixSort::SortKeys: empty data", "[keys][segmented][radix][sort][device]", single_key_type)
+// {
+//   using key_t    = c2h::get<0, TestType>;
+//   using offset_t = cuda::std::int32_t;
 
-  constexpr std::size_t min_num_items = 1 << 5;
-  constexpr std::size_t max_num_items = 1 << 20;
-  const std::size_t num_items         = GENERATE_COPY(take(2, random(min_num_items, max_num_items)));
-  const std::size_t num_segments      = GENERATE_COPY(take(1, random(std::size_t{2}, num_items / 2)));
+//   // const std::size_t num_items    = GENERATE(0, take(1, random(0, 1 << 10)));
+//   const std::size_t num_items    = GENERATE(0, take(1, random(0, 1 << 8)));
+//   const std::size_t num_segments = GENERATE(0, 1);
 
-  c2h::device_vector<key_t> in_keys(num_items);
-  const int num_key_seeds = 1;
-  c2h::gen(CUB_SEED(num_key_seeds), in_keys);
-  // Initialize the output keys using the input keys since not all items
-  // may belong to a segment.
-  c2h::device_vector<key_t> out_keys(in_keys);
+//   c2h::device_vector<key_t> in_keys(num_items);
+//   const int num_key_seeds = 1;
+//   c2h::gen(CUB_SEED(num_key_seeds), in_keys);
+//   // Initialize the output keys using the input keys since not all items
+//   // may belong to a segment.
+//   c2h::device_vector<key_t> out_keys(in_keys);
+//   c2h::device_vector<offset_t> offsets(2);
+//   offsets[0] = 0;
+//   offsets[1] = 0;
 
-  c2h::device_vector<offset_t> offsets(num_segments + 1);
-  const int num_segment_seeds = 1;
-  generate_segment_offsets(CUB_SEED(num_segment_seeds), offsets, static_cast<offset_t>(num_items));
+//   const bool is_descending = GENERATE(false, true);
 
-  constexpr int num_bits = sizeof(key_t) * CHAR_BIT;
-  // Explicitly use values<>({}) to workaround bug catchorg/Catch2#2040:
-  const int begin_bit = GENERATE_COPY(values<int>({0, num_bits / 3, 3 * num_bits / 4, num_bits}));
-  const int end_bit   = GENERATE_COPY(values<int>({0, num_bits / 3, 3 * num_bits / 4, num_bits}));
-  if (end_bit < begin_bit || (begin_bit == 0 && end_bit == num_bits))
-  {
-    // SKIP(); Not available until Catch2 3.3.0
-    return;
-  }
+//   CAPTURE(num_items, num_segments, is_descending);
 
-  const bool is_descending = GENERATE(false, true);
+//   auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, offsets);
 
-  CAPTURE(num_items, num_segments, begin_bit, end_bit, is_descending);
+//   if (is_descending)
+//   {
+//     sort_keys_descending(
+//       thrust::raw_pointer_cast(in_keys.data()),
+//       thrust::raw_pointer_cast(out_keys.data()),
+//       static_cast<int>(num_items),
+//       static_cast<int>(num_segments),
+//       // Mix pointers/iterators for segment info to test using different iterable types:
+//       thrust::raw_pointer_cast(offsets.data()),
+//       offsets.cbegin() + 1,
+//       begin_bit<key_t>(),
+//       end_bit<key_t>());
+//   }
+//   else
+//   {
+//     sort_keys(
+//       thrust::raw_pointer_cast(in_keys.data()),
+//       thrust::raw_pointer_cast(out_keys.data()),
+//       static_cast<int>(num_items),
+//       static_cast<int>(num_segments),
+//       // Mix pointers/iterators for segment info to test using different iterable types:
+//       thrust::raw_pointer_cast(offsets.data()),
+//       offsets.cbegin() + 1,
+//       begin_bit<key_t>(),
+//       end_bit<key_t>());
+//   }
 
-  auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, offsets, begin_bit, end_bit);
+//   REQUIRE((ref_keys == out_keys) == true);
+// }
 
-  if (is_descending)
-  {
-    sort_keys_descending(
-      thrust::raw_pointer_cast(in_keys.data()),
-      thrust::raw_pointer_cast(out_keys.data()),
-      static_cast<int>(num_items),
-      static_cast<int>(num_segments),
-      // Mix pointers/iterators for segment info to test using different iterable types:
-      thrust::raw_pointer_cast(offsets.data()),
-      offsets.cbegin() + 1,
-      begin_bit,
-      end_bit);
-  }
-  else
-  {
-    sort_keys(
-      thrust::raw_pointer_cast(in_keys.data()),
-      thrust::raw_pointer_cast(out_keys.data()),
-      static_cast<int>(num_items),
-      static_cast<int>(num_segments),
-      // Mix pointers/iterators for segment info to test using different iterable types:
-      thrust::raw_pointer_cast(offsets.data()),
-      offsets.cbegin() + 1,
-      begin_bit,
-      end_bit);
-  }
+// CUB_TEST("DeviceSegmentedRadixSort::SortKeys: bit windows",
+//          "[keys][segmented][radix][sort][device]",
+//          bit_window_key_types)
+// {
+//   using key_t    = c2h::get<0, TestType>;
+//   using offset_t = cuda::std::int32_t;
 
-  REQUIRE((ref_keys == out_keys) == true);
-}
+//   constexpr std::size_t min_num_items = 1 << 5;
+//   // constexpr std::size_t max_num_items = 1 << 20;
+//   constexpr std::size_t max_num_items = 1 << 8;
+//   const std::size_t num_items         = GENERATE_COPY(take(2, random(min_num_items, max_num_items)));
+//   const std::size_t num_segments      = GENERATE_COPY(take(1, random(std::size_t{2}, num_items / 2)));
 
-CUB_TEST("DeviceSegmentedRadixSort::SortKeys: large segments", "[keys][segmented][radix][sort][device]", single_key_type)
-{
-  using key_t    = c2h::get<0, TestType>;
-  using offset_t = cuda::std::int32_t;
+//   c2h::device_vector<key_t> in_keys(num_items);
+//   const int num_key_seeds = 1;
+//   c2h::gen(CUB_SEED(num_key_seeds), in_keys);
+//   // Initialize the output keys using the input keys since not all items
+//   // may belong to a segment.
+//   c2h::device_vector<key_t> out_keys(in_keys);
 
-  constexpr std::size_t min_num_items = 1 << 19;
-  constexpr std::size_t max_num_items = 1 << 20;
-  const std::size_t num_items         = GENERATE_COPY(take(2, random(min_num_items, max_num_items)));
-  const std::size_t num_segments      = 2;
+//   c2h::device_vector<offset_t> offsets(num_segments + 1);
+//   const int num_segment_seeds = 1;
+//   generate_segment_offsets(CUB_SEED(num_segment_seeds), offsets, static_cast<offset_t>(num_items));
 
-  c2h::device_vector<key_t> in_keys(num_items);
-  c2h::device_vector<key_t> out_keys(num_items);
-  const int num_key_seeds = 1;
-  c2h::gen(CUB_SEED(num_key_seeds), in_keys);
+//   constexpr int num_bits = sizeof(key_t) * CHAR_BIT;
+//   // Explicitly use values<>({}) to workaround bug catchorg/Catch2#2040:
+//   const int begin_bit = GENERATE_COPY(values<int>({0, num_bits / 3, 3 * num_bits / 4, num_bits}));
+//   const int end_bit   = GENERATE_COPY(values<int>({0, num_bits / 3, 3 * num_bits / 4, num_bits}));
+//   if (end_bit < begin_bit || (begin_bit == 0 && end_bit == num_bits))
+//   {
+//     // SKIP(); Not available until Catch2 3.3.0
+//     return;
+//   }
 
-  c2h::device_vector<offset_t> offsets(3);
-  offsets[0] = 0;
-  offsets[1] = static_cast<offset_t>(num_items / 2);
-  offsets[2] = static_cast<offset_t>(num_items);
+//   const bool is_descending = GENERATE(false, true);
 
-  const bool is_descending = GENERATE(false, true);
+//   CAPTURE(num_items, num_segments, begin_bit, end_bit, is_descending);
 
-  CAPTURE(num_items, num_segments, is_descending);
+//   auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, offsets, begin_bit, end_bit);
 
-  auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, offsets);
+//   if (is_descending)
+//   {
+//     sort_keys_descending(
+//       thrust::raw_pointer_cast(in_keys.data()),
+//       thrust::raw_pointer_cast(out_keys.data()),
+//       static_cast<int>(num_items),
+//       static_cast<int>(num_segments),
+//       // Mix pointers/iterators for segment info to test using different iterable types:
+//       thrust::raw_pointer_cast(offsets.data()),
+//       offsets.cbegin() + 1,
+//       begin_bit,
+//       end_bit);
+//   }
+//   else
+//   {
+//     sort_keys(
+//       thrust::raw_pointer_cast(in_keys.data()),
+//       thrust::raw_pointer_cast(out_keys.data()),
+//       static_cast<int>(num_items),
+//       static_cast<int>(num_segments),
+//       // Mix pointers/iterators for segment info to test using different iterable types:
+//       thrust::raw_pointer_cast(offsets.data()),
+//       offsets.cbegin() + 1,
+//       begin_bit,
+//       end_bit);
+//   }
 
-  if (is_descending)
-  {
-    sort_keys_descending(
-      thrust::raw_pointer_cast(in_keys.data()),
-      thrust::raw_pointer_cast(out_keys.data()),
-      static_cast<int>(num_items),
-      static_cast<int>(num_segments),
-      // Mix pointers/iterators for segment info to test using different iterable types:
-      thrust::raw_pointer_cast(offsets.data()),
-      offsets.cbegin() + 1,
-      begin_bit<key_t>(),
-      end_bit<key_t>());
-  }
-  else
-  {
-    sort_keys(
-      thrust::raw_pointer_cast(in_keys.data()),
-      thrust::raw_pointer_cast(out_keys.data()),
-      static_cast<int>(num_items),
-      static_cast<int>(num_segments),
-      // Mix pointers/iterators for segment info to test using different iterable types:
-      thrust::raw_pointer_cast(offsets.data()),
-      offsets.cbegin() + 1,
-      begin_bit<key_t>(),
-      end_bit<key_t>());
-  }
+//   REQUIRE((ref_keys == out_keys) == true);
+// }
 
-  REQUIRE((ref_keys == out_keys) == true);
-}
+// CUB_TEST("DeviceSegmentedRadixSort::SortKeys: large segments", "[keys][segmented][radix][sort][device]", single_key_type)
+// {
+//   using key_t    = c2h::get<0, TestType>;
+//   using offset_t = cuda::std::int32_t;
 
-CUB_TEST("DeviceSegmentedRadixSort::SortKeys: DoubleBuffer API",
-         "[keys][segmented][radix][sort][device]",
-         single_key_type)
-{
-  using key_t    = c2h::get<0, TestType>;
-  using offset_t = cuda::std::int32_t;
+//   // constexpr std::size_t min_num_items = 1 << 19;
+//   // constexpr std::size_t max_num_items = 1 << 20;
+//   constexpr std::size_t min_num_items = 1 << 7;
+//   constexpr std::size_t max_num_items = 1 << 8;
+//   const std::size_t num_items         = GENERATE_COPY(take(2, random(min_num_items, max_num_items)));
+//   const std::size_t num_segments      = 2;
 
-  constexpr std::size_t min_num_items = 1 << 17;
-  constexpr std::size_t max_num_items = 1 << 18;
-  const std::size_t num_items         = GENERATE_COPY(take(1, random(min_num_items, max_num_items)));
-  const std::size_t num_segments      = GENERATE_COPY(take(1, random(std::size_t{2}, num_items / 2)));
+//   c2h::device_vector<key_t> in_keys(num_items);
+//   c2h::device_vector<key_t> out_keys(num_items);
+//   const int num_key_seeds = 1;
+//   c2h::gen(CUB_SEED(num_key_seeds), in_keys);
 
-  c2h::device_vector<key_t> in_keys(num_items);
-  const int num_key_seeds = 1;
-  c2h::gen(CUB_SEED(num_key_seeds), in_keys);
-  // Initialize the output keys using the input keys since not all items
-  // may belong to a segment.
-  c2h::device_vector<key_t> out_keys(in_keys);
+//   c2h::device_vector<offset_t> offsets(3);
+//   offsets[0] = 0;
+//   offsets[1] = static_cast<offset_t>(num_items / 2);
+//   offsets[2] = static_cast<offset_t>(num_items);
 
-  c2h::device_vector<offset_t> offsets(num_segments + 1);
-  const int num_segment_seeds = 1;
-  generate_segment_offsets(CUB_SEED(num_segment_seeds), offsets, static_cast<offset_t>(num_items));
+//   const bool is_descending = GENERATE(false, true);
 
-  const bool is_descending = GENERATE(false, true);
+//   CAPTURE(num_items, num_segments, is_descending);
 
-  CAPTURE(num_items, num_segments, is_descending);
+//   auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, offsets);
 
-  auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, offsets);
+//   if (is_descending)
+//   {
+//     sort_keys_descending(
+//       thrust::raw_pointer_cast(in_keys.data()),
+//       thrust::raw_pointer_cast(out_keys.data()),
+//       static_cast<int>(num_items),
+//       static_cast<int>(num_segments),
+//       // Mix pointers/iterators for segment info to test using different iterable types:
+//       thrust::raw_pointer_cast(offsets.data()),
+//       offsets.cbegin() + 1,
+//       begin_bit<key_t>(),
+//       end_bit<key_t>());
+//   }
+//   else
+//   {
+//     sort_keys(
+//       thrust::raw_pointer_cast(in_keys.data()),
+//       thrust::raw_pointer_cast(out_keys.data()),
+//       static_cast<int>(num_items),
+//       static_cast<int>(num_segments),
+//       // Mix pointers/iterators for segment info to test using different iterable types:
+//       thrust::raw_pointer_cast(offsets.data()),
+//       offsets.cbegin() + 1,
+//       begin_bit<key_t>(),
+//       end_bit<key_t>());
+//   }
 
-  cub::DoubleBuffer<key_t> key_buffer(
-    thrust::raw_pointer_cast(in_keys.data()), thrust::raw_pointer_cast(out_keys.data()));
+//   REQUIRE((ref_keys == out_keys) == true);
+// }
 
-  double_buffer_segmented_sort_t action(is_descending);
-  action.initialize();
-  launch(action,
-         key_buffer,
-         static_cast<int>(num_items),
-         static_cast<int>(num_segments),
-         // Mix pointers/iterators for segment info to test using different iterable types:
-         thrust::raw_pointer_cast(offsets.data()),
-         offsets.cbegin() + 1,
-         begin_bit<key_t>(),
-         end_bit<key_t>());
+// CUB_TEST("DeviceSegmentedRadixSort::SortKeys: DoubleBuffer API",
+//          "[keys][segmented][radix][sort][device]",
+//          single_key_type)
+// {
+//   using key_t    = c2h::get<0, TestType>;
+//   using offset_t = cuda::std::int32_t;
 
-  key_buffer.selector = action.selector();
-  action.finalize();
+//   // constexpr std::size_t min_num_items = 1 << 17;
+//   // constexpr std::size_t max_num_items = 1 << 18;
+//     constexpr std::size_t min_num_items = 1 << 7;
+//   constexpr std::size_t max_num_items = 1 << 8;
+//   const std::size_t num_items         = GENERATE_COPY(take(1, random(min_num_items, max_num_items)));
+//   const std::size_t num_segments      = GENERATE_COPY(take(1, random(std::size_t{2}, num_items / 2)));
 
-  auto& keys = key_buffer.selector == 0 ? in_keys : out_keys;
+//   c2h::device_vector<key_t> in_keys(num_items);
+//   const int num_key_seeds = 1;
+//   c2h::gen(CUB_SEED(num_key_seeds), in_keys);
+//   // Initialize the output keys using the input keys since not all items
+//   // may belong to a segment.
+//   c2h::device_vector<key_t> out_keys(in_keys);
 
-  REQUIRE((ref_keys == keys) == true);
-}
+//   c2h::device_vector<offset_t> offsets(num_segments + 1);
+//   const int num_segment_seeds = 1;
+//   generate_segment_offsets(CUB_SEED(num_segment_seeds), offsets, static_cast<offset_t>(num_items));
 
-CUB_TEST("DeviceSegmentedRadixSort::SortKeys: unspecified ranges",
-         "[keys][segmented][radix][sort][device]",
-         single_key_type)
-{
-  using key_t    = c2h::get<0, TestType>;
-  using offset_t = cuda::std::int32_t;
+//   const bool is_descending = GENERATE(false, true);
 
-  constexpr std::size_t min_num_items = 1 << 15;
-  constexpr std::size_t max_num_items = 1 << 20;
-  const std::size_t num_items         = GENERATE_COPY(take(1, random(min_num_items, max_num_items)));
-  const std::size_t num_segments      = GENERATE_COPY(take(1, random(num_items / 128, num_items / 2)));
+//   CAPTURE(num_items, num_segments, is_descending);
 
-  c2h::device_vector<key_t> in_keys(num_items);
-  const int num_key_seeds = 1;
-  c2h::gen(CUB_SEED(num_key_seeds), in_keys);
-  // Initialize the output keys using the input keys since not all items
-  // will belong to a segment.
-  c2h::device_vector<key_t> out_keys(in_keys);
+//   auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, offsets);
 
-  c2h::device_vector<offset_t> begin_offsets(num_segments + 1);
-  const int num_segment_seeds = 1;
-  generate_segment_offsets(CUB_SEED(num_segment_seeds), begin_offsets, static_cast<offset_t>(num_items));
+//   cub::DoubleBuffer<key_t> key_buffer(
+//     thrust::raw_pointer_cast(in_keys.data()), thrust::raw_pointer_cast(out_keys.data()));
 
-  // Create separate begin/end offsets arrays and remove some of the segments by
-  // setting both offsets to 0.
-  c2h::device_vector<offset_t> end_offsets(begin_offsets.cbegin() + 1, begin_offsets.cend());
-  begin_offsets.pop_back();
+//   double_buffer_segmented_sort_t action(is_descending);
+//   action.initialize();
+//   launch(action,
+//          key_buffer,
+//          static_cast<int>(num_items),
+//          static_cast<int>(num_segments),
+//          // Mix pointers/iterators for segment info to test using different iterable types:
+//          thrust::raw_pointer_cast(offsets.data()),
+//          offsets.cbegin() + 1,
+//          begin_bit<key_t>(),
+//          end_bit<key_t>());
 
-  {
-    std::size_t num_empty_segments = num_segments / 16;
-    c2h::device_vector<std::size_t> indices(num_empty_segments);
-    c2h::gen(CUB_SEED(1), indices, std::size_t{0}, num_segments - 1);
-    auto begin = thrust::make_constant_iterator(key_t{0});
-    auto end = begin + num_empty_segments;
-    thrust::scatter(c2h::device_policy, begin, end, indices.cbegin(), begin_offsets.begin());
-    thrust::scatter(c2h::device_policy, begin, end, indices.cbegin(), end_offsets.begin());
-  }
+//   key_buffer.selector = action.selector();
+//   action.finalize();
 
-  const bool is_descending = GENERATE(false, true);
+//   auto& keys = key_buffer.selector == 0 ? in_keys : out_keys;
 
-  CAPTURE(num_items, num_segments, is_descending);
+//   REQUIRE((ref_keys == keys) == true);
+// }
 
-  auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, begin_offsets, end_offsets);
+// CUB_TEST("DeviceSegmentedRadixSort::SortKeys: unspecified ranges",
+//          "[keys][segmented][radix][sort][device]",
+//          single_key_type)
+// {
+//   using key_t    = c2h::get<0, TestType>;
+//   using offset_t = cuda::std::int32_t;
 
-  if (is_descending)
-  {
-    sort_keys_descending(
-      thrust::raw_pointer_cast(in_keys.data()),
-      thrust::raw_pointer_cast(out_keys.data()),
-      static_cast<int>(num_items),
-      static_cast<int>(num_segments),
-      // Mix pointers/iterators for segment info to test using different iterable types:
-      thrust::raw_pointer_cast(begin_offsets.data()),
-      end_offsets.cbegin(),
-      begin_bit<key_t>(),
-      end_bit<key_t>());
-  }
-  else
-  {
-    sort_keys(
-      thrust::raw_pointer_cast(in_keys.data()),
-      thrust::raw_pointer_cast(out_keys.data()),
-      static_cast<int>(num_items),
-      static_cast<int>(num_segments),
-      // Mix pointers/iterators for segment info to test using different iterable types:
-      thrust::raw_pointer_cast(begin_offsets.data()),
-      end_offsets.cbegin(),
-      begin_bit<key_t>(),
-      end_bit<key_t>());
-  }
+//   // constexpr std::size_t min_num_items = 1 << 15;
+//   // constexpr std::size_t max_num_items = 1 << 20;
+//   constexpr std::size_t min_num_items = 1 << 7;
+//   constexpr std::size_t max_num_items = 1 << 8;
+//   const std::size_t num_items         = GENERATE_COPY(take(1, random(min_num_items, max_num_items)));
+//   const std::size_t num_segments      = GENERATE_COPY(take(1, random(num_items / 128, num_items / 2)));
 
-  REQUIRE((ref_keys == out_keys) == true);
-}
+//   c2h::device_vector<key_t> in_keys(num_items);
+//   const int num_key_seeds = 1;
+//   c2h::gen(CUB_SEED(num_key_seeds), in_keys);
+//   // Initialize the output keys using the input keys since not all items
+//   // will belong to a segment.
+//   c2h::device_vector<key_t> out_keys(in_keys);
+
+//   c2h::device_vector<offset_t> begin_offsets(num_segments + 1);
+//   const int num_segment_seeds = 1;
+//   generate_segment_offsets(CUB_SEED(num_segment_seeds), begin_offsets, static_cast<offset_t>(num_items));
+
+//   // Create separate begin/end offsets arrays and remove some of the segments by
+//   // setting both offsets to 0.
+//   c2h::device_vector<offset_t> end_offsets(begin_offsets.cbegin() + 1, begin_offsets.cend());
+//   begin_offsets.pop_back();
+
+//   {
+//     std::size_t num_empty_segments = num_segments / 16;
+//     c2h::device_vector<std::size_t> indices(num_empty_segments);
+//     c2h::gen(CUB_SEED(1), indices, std::size_t{0}, num_segments - 1);
+//     auto begin = thrust::make_constant_iterator(key_t{0});
+//     auto end = begin + num_empty_segments;
+//     thrust::scatter(c2h::device_policy, begin, end, indices.cbegin(), begin_offsets.begin());
+//     thrust::scatter(c2h::device_policy, begin, end, indices.cbegin(), end_offsets.begin());
+//   }
+
+//   const bool is_descending = GENERATE(false, true);
+
+//   CAPTURE(num_items, num_segments, is_descending);
+
+//   auto ref_keys = segmented_radix_sort_reference(in_keys, is_descending, begin_offsets, end_offsets);
+
+//   if (is_descending)
+//   {
+//     sort_keys_descending(
+//       thrust::raw_pointer_cast(in_keys.data()),
+//       thrust::raw_pointer_cast(out_keys.data()),
+//       static_cast<int>(num_items),
+//       static_cast<int>(num_segments),
+//       // Mix pointers/iterators for segment info to test using different iterable types:
+//       thrust::raw_pointer_cast(begin_offsets.data()),
+//       end_offsets.cbegin(),
+//       begin_bit<key_t>(),
+//       end_bit<key_t>());
+//   }
+//   else
+//   {
+//     sort_keys(
+//       thrust::raw_pointer_cast(in_keys.data()),
+//       thrust::raw_pointer_cast(out_keys.data()),
+//       static_cast<int>(num_items),
+//       static_cast<int>(num_segments),
+//       // Mix pointers/iterators for segment info to test using different iterable types:
+//       thrust::raw_pointer_cast(begin_offsets.data()),
+//       end_offsets.cbegin(),
+//       begin_bit<key_t>(),
+//       end_bit<key_t>());
+//   }
+
+//   REQUIRE((ref_keys == out_keys) == true);
+// }

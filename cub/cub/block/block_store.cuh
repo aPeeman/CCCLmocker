@@ -86,6 +86,7 @@ _CCCL_DEVICE _CCCL_FORCEINLINE void StoreDirectBlocked(int linear_tid,
     for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ITEM++)
     {
         thread_itr[ITEM] = items[ITEM];
+
     }
 }
 

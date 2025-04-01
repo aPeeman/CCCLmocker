@@ -84,6 +84,14 @@ endif ()
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_definitions(-w)
+add_definitions(-DCUB_DETAIL_DEBUG_ENABLE_LOG)
+# add_definitions(-DUSE_GPU_FUSION_DEFAULT_POLICY)
+add_definitions(-DUSE_GPU_FUSION_THRUST)
+# add_definitions(-DUSE_GPU_WORKAROUND)
+# add_definitions(-DTHRUST_RDC_ENABLED)
+
+
 # Where to put build outputs. Use CMAKE_BINARY_DIR so they'll show up alongside
 # Thrust targets when building as part of Thrust.
 set(CUB_LIBRARY_OUTPUT_DIR "${CMAKE_BINARY_DIR}/lib")
@@ -104,11 +112,13 @@ endif()
 if (CUB_ENABLE_TESTING)
   add_subdirectory(test)
 endif()
+ 
+# if (CUB_ENABLE_EXAMPLES)
+#   add_subdirectory(examples)
+# endif()
 
-if (CUB_ENABLE_EXAMPLES)
-  add_subdirectory(examples)
-endif()
+# if (CUB_ENABLE_BENCHMARKS OR CUB_ENABLE_TUNING)
+#   add_subdirectory(benchmarks)
+# endif()
 
-if (CUB_ENABLE_BENCHMARKS OR CUB_ENABLE_TUNING)
-  add_subdirectory(benchmarks)
-endif()
+

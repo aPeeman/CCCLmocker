@@ -51,6 +51,8 @@ THRUST_NAMESPACE_BEGIN
 
 namespace cuda_cub {
 
+#ifdef USE_GPU_FUSION_THRUST
+
   // for_each_n
   _CCCL_EXEC_CHECK_DISABLE
   template <class Derived,
@@ -77,6 +79,82 @@ namespace cuda_cub {
 
     return first + count;
   }
+
+#else //USE_GPU_FUSION_THRUST
+  // for_each_n
+  _CCCL_EXEC_CHECK_DISABLE
+  template <class Derived,
+            class Input,
+            class Size,
+            class UnaryOp>
+  Input THRUST_FUNCTION
+  for_each_n(execution_policy<Derived> &policy,
+             Input                      first,
+             Size                       count,
+             UnaryOp                    op)
+  {
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (cudaStream_t stream = cuda_cub::stream(policy);
+       cudaError_t  status = cub::DeviceFor::ForEachN(first, count, op, stream);
+       cuda_cub::throw_on_error(status, "parallel_for failed");
+       status = cuda_cub::synchronize_optional(policy);
+       cuda_cub::throw_on_error(status, "parallel_for: failed to synchronize");),
+     // CDP sequential impl:
+    (for (Size idx = 0; idx != count; ++idx)
+        {
+          op(raw_reference_cast(*(first + idx)));
+        }    ));
+    return first + count;
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static Input par(execution_policy<Derived> &policy,
+             Input                      first,
+             Size                       count,
+             UnaryOp                    op)
+    {
+      cudaStream_t stream = cuda_cub::stream(policy);
+       cudaError_t  status = cub::DeviceFor::ForEachN(first, count, op, stream);
+       cuda_cub::throw_on_error(status, "parallel_for failed");
+       status = cuda_cub::synchronize_optional(policy);
+       cuda_cub::throw_on_error(status, "parallel_for: failed to synchronize");
+    return first + count;
+    }
+    __device__
+    static Input par(execution_policy<Derived> &policy,
+             Input                      first,
+             Size                       count,
+             UnaryOp                    op)
+    {
+      for (Size idx = 0; idx != count; ++idx)
+        {
+          op(raw_reference_cast(*(first + idx)));
+        }
+            return first + count;
+    }
+    __device__
+    static Input seq(execution_policy<Derived> &policy,
+             Input                      first,
+             Size                       count,
+             UnaryOp                    op) 
+    {
+      for (Size idx = 0; idx != count; ++idx)
+        {
+          op(raw_reference_cast(*(first + idx)));
+        }
+            return first + count;
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, count, op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, count, op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+  }
+#endif //USE_GPU_FUSION_THRUST
 
   // for_each
   template <class Derived,

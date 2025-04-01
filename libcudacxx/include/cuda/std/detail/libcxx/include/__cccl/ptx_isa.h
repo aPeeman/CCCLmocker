@@ -34,6 +34,7 @@
 // PTX ISA 8.3 is available from CUDA 12.3, driver r545
 // The first define is for future major versions of CUDACC.
 // We make sure that these get the highest known PTX ISA version.
+#ifdef USE_GPU_FUSION_PTX
 #if (defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ > 12)) || (!defined(__CUDACC_VER_MAJOR__))
 #  define __cccl_ptx_isa 830ULL
 #elif (defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ >= 12 && __CUDACC_VER_MINOR__ >= 3)) \
@@ -91,7 +92,9 @@
 #else
 #  define __cccl_ptx_isa 0ULL
 #endif
-
+#else  //USE_GPU_FUSION_PTX
+#  define __cccl_ptx_isa 0ULL
+#endif  //USE_GPU_FUSION_PTX
 // We define certain feature test macros depending on availability. When
 // __CUDA_MINIMUM_ARCH__ is not available, we define the following features
 // depending on PTX ISA. This permits checking for the feature in host code.

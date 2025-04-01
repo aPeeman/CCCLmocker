@@ -497,7 +497,7 @@ namespace __smart_sort {
 // Thrust API entry points
 //-------------------------
 
-
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived, class ItemsIt, class CompareOp>
 void _CCCL_HOST_DEVICE
@@ -587,6 +587,291 @@ stable_sort_by_key(execution_policy<Derived> &policy,
                                 values,
                                 compare_op);));
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class ItemsIt, class CompareOp>
+void _CCCL_HOST_DEVICE
+sort(execution_policy<Derived>& policy,
+     ItemsIt                    first,
+     ItemsIt                    last,
+     CompareOp                  compare_op)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (using item_t = thrust::iterator_value_t<ItemsIt>; item_t *null_ = nullptr;
+     __smart_sort::smart_sort<thrust::detail::false_type,
+                              thrust::detail::false_type>(policy,
+                                                          first,
+                                                          last,
+                                                          null_,
+                                                          compare_op);),
+     // CDP sequential impl:
+    (thrust::sort(cvt_to_seq(derived_cast(policy)), first, last, compare_op);    ));
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static void par(execution_policy<Derived>& policy,
+     ItemsIt                    first,
+     ItemsIt                    last,
+     CompareOp                  compare_op)
+    {
+			using item_t = thrust::iterator_value_t<ItemsIt>; item_t *null_ = nullptr;
+     __smart_sort::smart_sort<thrust::detail::false_type,
+                              thrust::detail::false_type>(policy,
+                                                          first,
+                                                          last,
+                                                          null_,
+                                                          compare_op);
+    }
+    __device__
+    static void par(execution_policy<Derived>& policy,
+     ItemsIt                    first,
+     ItemsIt                    last,
+     CompareOp                  compare_op)
+    {
+		  thrust::sort(cvt_to_seq(derived_cast(policy)), first, last, compare_op);
+    }
+    __device__
+    static void seq(execution_policy<Derived>& policy,
+     ItemsIt                    first,
+     ItemsIt                    last,
+     CompareOp                  compare_op) 
+    {
+			thrust::sort(cvt_to_seq(derived_cast(policy)), first, last, compare_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, compare_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, compare_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class ItemsIt, class CompareOp>
+void _CCCL_HOST_DEVICE
+stable_sort(execution_policy<Derived>& policy,
+            ItemsIt                    first,
+            ItemsIt                    last,
+            CompareOp                  compare_op)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (using item_t = thrust::iterator_value_t<ItemsIt>; item_t *null_ = nullptr;
+     __smart_sort::smart_sort<thrust::detail::false_type,
+                              thrust::detail::true_type>(policy,
+                                                         first,
+                                                         last,
+                                                         null_,
+                                                         compare_op);),
+     // CDP sequential impl:
+    (thrust::stable_sort(cvt_to_seq(derived_cast(policy)),
+                         first,
+                         last,
+                         compare_op);    ));
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static void par(execution_policy<Derived>& policy,
+            ItemsIt                    first,
+            ItemsIt                    last,
+            CompareOp                  compare_op)
+    {
+			using item_t = thrust::iterator_value_t<ItemsIt>; item_t *null_ = nullptr;
+     __smart_sort::smart_sort<thrust::detail::false_type,
+                              thrust::detail::true_type>(policy,
+                                                         first,
+                                                         last,
+                                                         null_,
+                                                         compare_op);
+    }
+    __device__
+    static void par(execution_policy<Derived>& policy,
+            ItemsIt                    first,
+            ItemsIt                    last,
+            CompareOp                  compare_op)
+    {
+		  thrust::stable_sort(cvt_to_seq(derived_cast(policy)),
+                         first,
+                         last,
+                         compare_op);
+    }
+    __device__
+    static void seq(execution_policy<Derived>& policy,
+            ItemsIt                    first,
+            ItemsIt                    last,
+            CompareOp                  compare_op) 
+    {
+			thrust::stable_sort(cvt_to_seq(derived_cast(policy)),
+                         first,
+                         last,
+                         compare_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, compare_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, compare_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND                         
+}
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class KeysIt, class ValuesIt, class CompareOp>
+void _CCCL_HOST_DEVICE
+sort_by_key(execution_policy<Derived>& policy,
+            KeysIt                     keys_first,
+            KeysIt                     keys_last,
+            ValuesIt                   values,
+            CompareOp                  compare_op)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (__smart_sort::smart_sort<thrust::detail::true_type,
+                              thrust::detail::false_type>(policy,
+                                                          keys_first,
+                                                          keys_last,
+                                                          values,
+                                                          compare_op);),
+     // CDP sequential impl:
+    (thrust::sort_by_key(cvt_to_seq(derived_cast(policy)),
+                         keys_first,
+                         keys_last,
+                         values,
+                         compare_op);    ));
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static void par(execution_policy<Derived>& policy,
+            KeysIt                     keys_first,
+            KeysIt                     keys_last,
+            ValuesIt                   values,
+            CompareOp                  compare_op)
+    {
+			__smart_sort::smart_sort<thrust::detail::true_type,
+                              thrust::detail::false_type>(policy,
+                                                          keys_first,
+                                                          keys_last,
+                                                          values,
+                                                          compare_op);
+    }
+    __device__
+    static void par(execution_policy<Derived>& policy,
+            KeysIt                     keys_first,
+            KeysIt                     keys_last,
+            ValuesIt                   values,
+            CompareOp                  compare_op)
+    {
+		  thrust::sort_by_key(cvt_to_seq(derived_cast(policy)),
+                         keys_first,
+                         keys_last,
+                         values,
+                         compare_op);
+    }
+    __device__
+    static void seq(execution_policy<Derived>& policy,
+            KeysIt                     keys_first,
+            KeysIt                     keys_last,
+            ValuesIt                   values,
+            CompareOp                  compare_op) 
+    {
+			thrust::sort_by_key(cvt_to_seq(derived_cast(policy)),
+                         keys_first,
+                         keys_last,
+                         values,
+                         compare_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, keys_first, keys_last, values, compare_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, keys_first, keys_last, values, compare_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND                     
+}
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived,
+          class KeysIt,
+          class ValuesIt,
+          class CompareOp>
+void _CCCL_HOST_DEVICE
+stable_sort_by_key(execution_policy<Derived> &policy,
+            KeysIt                     keys_first,
+            KeysIt                     keys_last,
+            ValuesIt                   values,
+            CompareOp                  compare_op)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (__smart_sort::smart_sort<thrust::detail::true_type,
+                              thrust::detail::true_type>(policy,
+                                                         keys_first,
+                                                         keys_last,
+                                                         values,
+                                                         compare_op);),
+     // CDP sequential impl:
+    (thrust::stable_sort_by_key(cvt_to_seq(derived_cast(policy)),
+                                keys_first,
+                                keys_last,
+                                values,
+                                compare_op);    ));
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static void par(execution_policy<Derived> &policy,
+            KeysIt                     keys_first,
+            KeysIt                     keys_last,
+            ValuesIt                   values,
+            CompareOp                  compare_op)
+    {
+			__smart_sort::smart_sort<thrust::detail::true_type,
+                              thrust::detail::true_type>(policy,
+                                                         keys_first,
+                                                         keys_last,
+                                                         values,
+                                                         compare_op);
+    }
+    __device__
+    static void par(execution_policy<Derived> &policy,
+            KeysIt                     keys_first,
+            KeysIt                     keys_last,
+            ValuesIt                   values,
+            CompareOp                  compare_op)
+    {
+		  thrust::stable_sort_by_key(cvt_to_seq(derived_cast(policy)),
+                                keys_first,
+                                keys_last,
+                                values,
+                                compare_op);
+    }
+    __device__
+    static void seq(execution_policy<Derived> &policy,
+            KeysIt                     keys_first,
+            KeysIt                     keys_last,
+            ValuesIt                   values,
+            CompareOp                  compare_op) 
+    {
+			thrust::stable_sort_by_key(cvt_to_seq(derived_cast(policy)),
+                                keys_first,
+                                keys_last,
+                                values,
+                                compare_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, keys_first, keys_last, values, compare_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, keys_first, keys_last, values, compare_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND                              
+}
+#endif //USE_GPU_FUSION_THRUST
 
 // API with default comparator
 

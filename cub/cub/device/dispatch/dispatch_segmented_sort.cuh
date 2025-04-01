@@ -175,7 +175,7 @@ __launch_bounds__(ChainedPolicyT::ActivePolicy::LargeSegmentPolicy::BLOCK_THREAD
     d_values_in_orig += segment_begin;
     d_values_out_orig += segment_begin;
   }
-
+ 
   if (num_items <= MediumPolicyT::ITEMS_PER_TILE)
   {
     // Sort by a single warp
@@ -1440,6 +1440,7 @@ struct DispatchSegmentedSort : SelectedPolicy
       {
         // Partition input segments into size groups and assign specialized
         // kernels for each of them.
+#ifdef USE_GPU_FUSION_PTX
         error =
           SortWithPartitioning<LargeSegmentPolicyT, SmallAndMediumPolicyT>(
             DeviceSegmentedSortKernelLarge<IS_DESCENDING,
@@ -1465,6 +1466,9 @@ struct DispatchSegmentedSort : SelectedPolicy
             large_and_medium_segments_indices,
             small_segments_indices,
             group_sizes);
+#else
+    error = cudaSuccess;
+#endif
       }
       else
       {
@@ -1482,6 +1486,7 @@ struct DispatchSegmentedSort : SelectedPolicy
           d_keys_double_buffer,
           d_values_double_buffer);
       }
+
 
       d_keys.selector = GetFinalSelector(d_keys.selector, radix_bits);
       d_values.selector = GetFinalSelector(d_values.selector, radix_bits);

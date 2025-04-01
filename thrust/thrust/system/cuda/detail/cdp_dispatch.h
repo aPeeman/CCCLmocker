@@ -80,6 +80,9 @@
 // that are launched from the host path.
 #if defined(__CUDACC__) && defined(__CUDA_ARCH__)
 
+
+
+// #error ERRRRRRRRRRRRR
 // Device-side launch not supported, fallback to sequential in device code.
 #define THRUST_CDP_DISPATCH(par_impl, seq_impl)                                \
   if (false)                                                                   \
@@ -90,6 +93,8 @@
 
 #else // !(NVCC device pass):
 
+
+// #error EEEEEEEEEEEEEEEEE
 #define THRUST_CDP_DISPATCH(par_impl, seq_impl)                                \
   NV_IF_TARGET(NV_IS_HOST, par_impl, seq_impl)
 

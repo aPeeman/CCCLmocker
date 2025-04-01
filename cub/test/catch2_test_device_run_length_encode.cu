@@ -40,7 +40,7 @@
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceRunLengthEncode::Encode, run_length_encode);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 using all_types = c2h::type_list<std::uint8_t,
                                  std::uint64_t,

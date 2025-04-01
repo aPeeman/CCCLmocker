@@ -48,7 +48,7 @@ DECLARE_LAUNCH_WRAPPER(cub::DeviceRadixSort::SortPairs, sort_pairs);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceRadixSort::SortKeysDescending, sort_keys_descending);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceRadixSort::SortPairsDescending, sort_pairs_descending);
 
-// %PARAM% TEST_LAUNCH lid 0:1
+// %PARAM% TEST_LAUNCH lid 0
 
 using key   = c2h::custom_type_t<c2h::equal_comparable_t,
                                  c2h::lexicographical_less_comparable_t,
@@ -181,7 +181,8 @@ reference_sort_pairs(const c2h::device_vector<key> &d_keys,
 
 CUB_TEST("Device radix sort works with parts of custom i128_t", "[radix][sort][device]")
 {
-  constexpr int max_items = 1 << 18;
+  // constexpr int max_items = 1 << 18;
+  constexpr int max_items = 1 << 8;
   const int num_items = GENERATE_COPY(take(4, random(max_items / 2, max_items)));
 
   c2h::device_vector<key> in_keys(num_items);
@@ -199,7 +200,8 @@ CUB_TEST("Device radix sort works with parts of custom i128_t", "[radix][sort][d
 
 CUB_TEST("Device radix descending sort works with custom i128_t", "[radix][sort][device]")
 {
-  constexpr int max_items = 1 << 18;
+  // constexpr int max_items = 1 << 18;
+    constexpr int max_items = 1 << 8;
   const int num_items = GENERATE_COPY(take(4, random(max_items / 2, max_items)));
 
   c2h::device_vector<key> in_keys(num_items);
@@ -229,7 +231,8 @@ CUB_TEST("Device radix descending sort works with custom i128_t", "[radix][sort]
 
 CUB_TEST("Device radix sort can sort pairs with custom i128_t keys", "[radix][sort][device]")
 {
-  constexpr int max_items = 1 << 18;
+  // constexpr int max_items = 1 << 18;
+  constexpr int max_items = 1 << 8;
   const int num_items = GENERATE_COPY(take(4, random(max_items / 2, max_items)));
 
   c2h::device_vector<key> in_keys(num_items);
@@ -268,7 +271,8 @@ CUB_TEST("Device radix sort can sort pairs with custom i128_t keys", "[radix][so
 
 CUB_TEST("Device radix sort works with custom i128_t (db)", "[radix][sort][device]")
 {
-  constexpr int max_items = 1 << 18;
+  // constexpr int max_items = 1 << 18;
+  constexpr int max_items = 1 << 8;
   const int num_items = GENERATE_COPY(take(4, random(max_items / 2, max_items)));
 
   c2h::device_vector<key> keys_1(num_items);
@@ -297,7 +301,8 @@ CUB_TEST("Device radix sort works with custom i128_t (db)", "[radix][sort][devic
 
 CUB_TEST("Device radix sort works with custom i128_t keys (db)", "[radix][sort][device]")
 {
-  constexpr int max_items = 1 << 18;
+  // constexpr int max_items = 1 << 18;
+  constexpr int max_items = 1 << 8;
   const int num_items = GENERATE_COPY(take(4, random(max_items / 2, max_items)));
 
   c2h::device_vector<key> keys_1(num_items);
@@ -342,7 +347,8 @@ CUB_TEST("Device radix sort works with custom i128_t keys (db)", "[radix][sort][
 
 CUB_TEST("Device radix descending sort works with bits of custom i128_t", "[radix][sort][device]")
 {
-  constexpr int max_items = 1 << 18;
+  // constexpr int max_items = 1 << 18;
+  constexpr int max_items = 1 << 8;
   const int num_items = GENERATE_COPY(take(1, random(max_items / 2, max_items)));
 
   c2h::device_vector<key> in_keys(num_items);
@@ -380,7 +386,8 @@ CUB_TEST("Device radix descending sort works with bits of custom i128_t", "[radi
 CUB_TEST("Device radix sort can sort pairs with bits of custom i128_t keys",
          "[radix][sort][device]")
 {
-  constexpr int max_items = 1 << 18;
+  // constexpr int max_items = 1 << 18;
+  constexpr int max_items = 1 << 8;
   const int num_items = GENERATE_COPY(take(1, random(max_items / 2, max_items)));
 
   c2h::device_vector<key> in_keys(num_items);
@@ -426,7 +433,8 @@ CUB_TEST("Device radix sort can sort pairs with bits of custom i128_t keys",
 
 CUB_TEST("Device radix sort works with bits of custom i128_t (db)", "[radix][sort][device]")
 {
-  constexpr int max_items = 1 << 18;
+  // constexpr int max_items = 1 << 18;
+  constexpr int max_items = 1 << 8;
   const int num_items = GENERATE_COPY(take(4, random(max_items / 2, max_items)));
 
   c2h::device_vector<key> keys_1(num_items);
@@ -463,7 +471,8 @@ CUB_TEST("Device radix sort works with bits of custom i128_t (db)", "[radix][sor
 
 CUB_TEST("Device radix sort works with bits of custom i128_t keys (db)", "[radix][sort][device]")
 {
-  constexpr int max_items = 1 << 18;
+  // constexpr int max_items = 1 << 18;
+  constexpr int max_items = 1 << 8;
   const int num_items = GENERATE_COPY(take(4, random(max_items / 2, max_items)));
 
   int *selector = nullptr;

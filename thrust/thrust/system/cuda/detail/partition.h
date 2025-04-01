@@ -261,6 +261,7 @@ THRUST_RUNTIME_FUNCTION InputIt inplace_partition(
 // Thrust API entry points
 //-------------------------
 
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived, class InputIt, class StencilIt, class SelectedOutIt, class RejectedOutIt, class Predicate>
 pair<SelectedOutIt, RejectedOutIt> _CCCL_HOST_DEVICE partition_copy(
@@ -391,6 +392,445 @@ stable_partition(execution_policy<Derived>& policy, Iterator first, Iterator las
     (ret = thrust::stable_partition(cvt_to_seq(derived_cast(policy)), first, last, predicate);));
   return ret;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class InputIt, class StencilIt, class SelectedOutIt, class RejectedOutIt, class Predicate>
+pair<SelectedOutIt, RejectedOutIt> _CCCL_HOST_DEVICE partition_copy(
+  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  StencilIt stencil,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+{
+  auto ret = thrust::make_pair(selected_result, rejected_result);
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = detail::stable_partition_copy(policy, first, last, stencil, selected_result, rejected_result, predicate);),
+     // CDP sequential impl:
+    (ret = thrust::partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, stencil, selected_result, rejected_result, predicate);    ));
+  return ret;
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static pair<SelectedOutIt, RejectedOutIt> par(execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  StencilIt stencil,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+    {
+      return detail::stable_partition_copy(policy, first, last, stencil, selected_result, rejected_result, predicate);
+    }
+    __device__
+    static pair<SelectedOutIt, RejectedOutIt> par(execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  StencilIt stencil,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+    {
+      return thrust::partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, stencil, selected_result, rejected_result, predicate);
+    }
+    __device__
+    static pair<SelectedOutIt, RejectedOutIt> seq(execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  StencilIt stencil,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate) 
+    {
+      return thrust::partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, stencil, selected_result, rejected_result, predicate);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, stencil, selected_result, rejected_result, predicate);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, stencil, selected_result, rejected_result, predicate);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class InputIt, class SelectedOutIt, class RejectedOutIt, class Predicate>
+pair<SelectedOutIt, RejectedOutIt> _CCCL_HOST_DEVICE partition_copy(
+  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+{
+  auto ret = thrust::make_pair(selected_result, rejected_result);
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = detail::stable_partition_copy(
+       policy, first, last, static_cast<cub::NullType*>(nullptr), selected_result, rejected_result, predicate);),
+     // CDP sequential impl:
+    (ret = thrust::partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, selected_result, rejected_result, predicate);    ));
+  return ret;       
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static pair<SelectedOutIt, RejectedOutIt> par(  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+    {
+			return detail::stable_partition_copy(
+       policy, first, last, static_cast<cub::NullType*>(nullptr), selected_result, rejected_result, predicate);
+    }
+    __device__
+    static pair<SelectedOutIt, RejectedOutIt> par(  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+    {
+		  return thrust::partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, selected_result, rejected_result, predicate);
+    }
+    __device__
+    static pair<SelectedOutIt, RejectedOutIt> seq(  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate) 
+    {
+			return thrust::partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, selected_result, rejected_result, predicate);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, selected_result, rejected_result, predicate);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, selected_result, rejected_result, predicate);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class InputIt, class StencilIt, class SelectedOutIt, class RejectedOutIt, class Predicate>
+pair<SelectedOutIt, RejectedOutIt> _CCCL_HOST_DEVICE stable_partition_copy(
+  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  StencilIt stencil,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+{
+  auto ret = thrust::make_pair(selected_result, rejected_result);
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = detail::stable_partition_copy(policy, first, last, stencil, selected_result, rejected_result, predicate);),
+     // CDP sequential impl:
+    (ret = thrust::stable_partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, stencil, selected_result, rejected_result, predicate);    ));
+  return ret;
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static pair<SelectedOutIt, RejectedOutIt> par(  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  StencilIt stencil,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+    {
+			return detail::stable_partition_copy(policy, first, last, stencil, selected_result, rejected_result, predicate);
+    }
+    __device__
+    static pair<SelectedOutIt, RejectedOutIt> par(  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  StencilIt stencil,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+    {
+		  return thrust::stable_partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, stencil, selected_result, rejected_result, predicate);
+    }
+    __device__
+    static pair<SelectedOutIt, RejectedOutIt> seq(  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  StencilIt stencil,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate) 
+    {
+			return thrust::stable_partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, stencil, selected_result, rejected_result, predicate);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, stencil, selected_result, rejected_result, predicate);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, stencil, selected_result, rejected_result, predicate);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class InputIt, class SelectedOutIt, class RejectedOutIt, class Predicate>
+pair<SelectedOutIt, RejectedOutIt> _CCCL_HOST_DEVICE stable_partition_copy(
+  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+{
+  auto ret = thrust::make_pair(selected_result, rejected_result);
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = detail::stable_partition_copy(
+       policy, first, last, static_cast<cub::NullType*>(nullptr), selected_result, rejected_result, predicate);),
+     // CDP sequential impl:
+    (ret = thrust::stable_partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, selected_result, rejected_result, predicate);    ));
+    return ret;     
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static pair<SelectedOutIt, RejectedOutIt> par(  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+    {
+			return detail::stable_partition_copy(
+       policy, first, last, static_cast<cub::NullType*>(nullptr), selected_result, rejected_result, predicate);
+    }
+    __device__
+    static pair<SelectedOutIt, RejectedOutIt> par(  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate)
+    {
+		  return thrust::stable_partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, selected_result, rejected_result, predicate);
+    }
+    __device__
+    static pair<SelectedOutIt, RejectedOutIt> seq(  execution_policy<Derived>& policy,
+  InputIt first,
+  InputIt last,
+  SelectedOutIt selected_result,
+  RejectedOutIt rejected_result,
+  Predicate predicate) 
+    {
+			return thrust::stable_partition_copy(
+       cvt_to_seq(derived_cast(policy)), first, last, selected_result, rejected_result, predicate);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, selected_result, rejected_result, predicate);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, selected_result, rejected_result, predicate);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+
+/// inplace
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class Iterator, class StencilIt, class Predicate>
+Iterator _CCCL_HOST_DEVICE
+partition(execution_policy<Derived>& policy, Iterator first, Iterator last, StencilIt stencil, Predicate predicate)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (last = detail::inplace_partition(policy, first, last, stencil, predicate);),
+     // CDP sequential impl:
+    (last = thrust::partition(cvt_to_seq(derived_cast(policy)), first, last, stencil, predicate);    ));
+  return last;    
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static Iterator par(execution_policy<Derived>& policy, Iterator first, Iterator last, StencilIt stencil, Predicate predicate)
+    {
+			return detail::inplace_partition(policy, first, last, stencil, predicate);
+    }
+    __device__
+    static Iterator par(execution_policy<Derived>& policy, Iterator first, Iterator last, StencilIt stencil, Predicate predicate)
+    {
+		  return thrust::partition(cvt_to_seq(derived_cast(policy)), first, last, stencil, predicate);
+    }
+    __device__
+    static Iterator seq(execution_policy<Derived>& policy, Iterator first, Iterator last, StencilIt stencil, Predicate predicate) 
+    {
+			return thrust::partition(cvt_to_seq(derived_cast(policy)), first, last, stencil, predicate);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, stencil, predicate);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, stencil, predicate);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class Iterator, class Predicate>
+Iterator _CCCL_HOST_DEVICE
+partition(execution_policy<Derived>& policy, Iterator first, Iterator last, Predicate predicate)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (last = detail::inplace_partition(policy, first, last, static_cast<cub::NullType*>(nullptr), predicate);),
+     // CDP sequential impl:
+    (last = thrust::partition(cvt_to_seq(derived_cast(policy)), first, last, predicate);    ));
+  return last;    
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static Iterator par(execution_policy<Derived>& policy, Iterator first, Iterator last, Predicate predicate)
+    {
+			return detail::inplace_partition(policy, first, last, static_cast<cub::NullType*>(nullptr), predicate);
+    }
+    __device__
+    static Iterator par(execution_policy<Derived>& policy, Iterator first, Iterator last, Predicate predicate)
+    {
+		  return thrust::partition(cvt_to_seq(derived_cast(policy)), first, last, predicate);
+    }
+    __device__
+    static Iterator seq(execution_policy<Derived>& policy, Iterator first, Iterator last, Predicate predicate) 
+    {
+			return thrust::partition(cvt_to_seq(derived_cast(policy)), first, last, predicate);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, predicate);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, predicate);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class Iterator, class StencilIt, class Predicate>
+Iterator _CCCL_HOST_DEVICE stable_partition(
+  execution_policy<Derived>& policy, Iterator first, Iterator last, StencilIt stencil, Predicate predicate)
+{
+  auto ret = last;
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = detail::inplace_partition(policy, first, last, stencil, predicate);
+
+     /* partition returns rejected values in reverse order
+       so reverse the rejected elements to make it stable */
+     cuda_cub::reverse(policy, ret, last);),
+
+     // CDP sequential impl:
+    (ret = thrust::stable_partition(cvt_to_seq(derived_cast(policy)), first, last, stencil, predicate);    ));
+  return ret;    
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static Iterator par(execution_policy<Derived>& policy, Iterator first, Iterator last, StencilIt stencil, Predicate predicate)
+    {
+      auto ret = last;
+			ret = detail::inplace_partition(policy, first, last, stencil, predicate);
+
+     /* partition returns rejected values in reverse order
+       so reverse the rejected elements to make it stable */
+     cuda_cub::reverse(policy, ret, last);
+     return ret;
+    }
+    __device__
+    static Iterator par(execution_policy<Derived>& policy, Iterator first, Iterator last, StencilIt stencil, Predicate predicate)
+    {
+		  return thrust::stable_partition(cvt_to_seq(derived_cast(policy)), first, last, stencil, predicate);
+    }
+    __device__
+    static Iterator seq(execution_policy<Derived>& policy, Iterator first, Iterator last, StencilIt stencil, Predicate predicate) 
+    {
+			return thrust::stable_partition(cvt_to_seq(derived_cast(policy)), first, last, stencil, predicate);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, stencil, predicate);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, stencil, predicate);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class Iterator, class Predicate>
+Iterator _CCCL_HOST_DEVICE
+stable_partition(execution_policy<Derived>& policy, Iterator first, Iterator last, Predicate predicate)
+{
+  auto ret = last;
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = detail::inplace_partition(policy, first, last, static_cast<cub::NullType*>(nullptr), predicate);
+
+     /* partition returns rejected values in reverse order
+      so reverse the rejected elements to make it stable */
+     cuda_cub::reverse(policy, ret, last);),
+     // CDP sequential impl:
+    (ret = thrust::stable_partition(cvt_to_seq(derived_cast(policy)), first, last, predicate);    ));
+  return ret;
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static Iterator par(execution_policy<Derived>& policy, Iterator first, Iterator last, Predicate predicate)
+    {
+      auto ret = last;
+      ret = detail::inplace_partition(policy, first, last, static_cast<cub::NullType*>(nullptr), predicate);
+
+     /* partition returns rejected values in reverse order
+      so reverse the rejected elements to make it stable */
+     cuda_cub::reverse(policy, ret, last);
+			return ret;
+    }
+    __device__
+    static Iterator par(execution_policy<Derived>& policy, Iterator first, Iterator last, Predicate predicate)
+    {
+		  return thrust::stable_partition(cvt_to_seq(derived_cast(policy)), first, last, predicate);
+    }
+    __device__
+    static Iterator seq(execution_policy<Derived>& policy, Iterator first, Iterator last, Predicate predicate) 
+    {
+			return thrust::stable_partition(cvt_to_seq(derived_cast(policy)), first, last, predicate);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, predicate);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, predicate);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
+
 
 template <class Derived,
           class ItemsIt,

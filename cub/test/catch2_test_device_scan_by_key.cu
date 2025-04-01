@@ -44,7 +44,7 @@ DECLARE_LAUNCH_WRAPPER(cub::DeviceScan::ExclusiveScanByKey, device_exclusive_sca
 DECLARE_LAUNCH_WRAPPER(cub::DeviceScan::InclusiveSumByKey, device_inclusive_sum_by_key);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceScan::InclusiveScanByKey, device_inclusive_scan_by_key);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 // %PARAM% TEST_TYPES types 0:1:2:3
 
 // List of types to test

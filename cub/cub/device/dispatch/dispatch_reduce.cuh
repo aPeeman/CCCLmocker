@@ -490,6 +490,7 @@ struct DeviceReducePolicy
 
   /// SM60
   struct Policy600 : ChainedPolicy<600, Policy600, Policy350>
+
   {
     static constexpr int threads_per_block  = 256;
     static constexpr int items_per_thread   = 16;
@@ -509,8 +510,12 @@ struct DeviceReducePolicy
     // SegmentedReducePolicy
     using SegmentedReducePolicy = ReducePolicy;
   };
-
+#ifdef USE_GPU_FUSION_PTX
   using MaxPolicy = Policy600;
+#else //USE_GPU_FUSION_PTX
+  using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
+
 };
 
 /******************************************************************************

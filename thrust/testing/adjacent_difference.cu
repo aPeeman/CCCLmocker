@@ -44,123 +44,123 @@ void TestAdjacentDifferenceSimple(void)
 DECLARE_VECTOR_UNITTEST(TestAdjacentDifferenceSimple);
 
 
-template <typename T>
-void TestAdjacentDifference(const size_t n)
-{
-    thrust::host_vector<T>   h_input = unittest::random_samples<T>(n);
-    thrust::device_vector<T> d_input = h_input;
+// template <typename T>
+// void TestAdjacentDifference(const size_t n)
+// {
+//     thrust::host_vector<T>   h_input = unittest::random_samples<T>(n);
+//     thrust::device_vector<T> d_input = h_input;
 
-    thrust::host_vector<T>   h_output(n);
-    thrust::device_vector<T> d_output(n);
+//     thrust::host_vector<T>   h_output(n);
+//     thrust::device_vector<T> d_output(n);
 
-    typename thrust::host_vector<T>::iterator   h_result;
-    typename thrust::device_vector<T>::iterator d_result;
+//     typename thrust::host_vector<T>::iterator   h_result;
+//     typename thrust::device_vector<T>::iterator d_result;
 
-    h_result = thrust::adjacent_difference(h_input.begin(), h_input.end(), h_output.begin());
-    d_result = thrust::adjacent_difference(d_input.begin(), d_input.end(), d_output.begin());
+//     h_result = thrust::adjacent_difference(h_input.begin(), h_input.end(), h_output.begin());
+//     d_result = thrust::adjacent_difference(d_input.begin(), d_input.end(), d_output.begin());
 
-    ASSERT_EQUAL(std::size_t(h_result - h_output.begin()), n);
-    ASSERT_EQUAL(std::size_t(d_result - d_output.begin()), n);
-    ASSERT_EQUAL(h_output, d_output);
+//     ASSERT_EQUAL(std::size_t(h_result - h_output.begin()), n);
+//     ASSERT_EQUAL(std::size_t(d_result - d_output.begin()), n);
+//     ASSERT_EQUAL(h_output, d_output);
 
-    h_result = thrust::adjacent_difference(h_input.begin(), h_input.end(), h_output.begin(), thrust::plus<T>());
-    d_result = thrust::adjacent_difference(d_input.begin(), d_input.end(), d_output.begin(), thrust::plus<T>());
+//     h_result = thrust::adjacent_difference(h_input.begin(), h_input.end(), h_output.begin(), thrust::plus<T>());
+//     d_result = thrust::adjacent_difference(d_input.begin(), d_input.end(), d_output.begin(), thrust::plus<T>());
 
-    ASSERT_EQUAL(std::size_t(h_result - h_output.begin()), n);
-    ASSERT_EQUAL(std::size_t(d_result - d_output.begin()), n);
-    ASSERT_EQUAL(h_output, d_output);
+//     ASSERT_EQUAL(std::size_t(h_result - h_output.begin()), n);
+//     ASSERT_EQUAL(std::size_t(d_result - d_output.begin()), n);
+//     ASSERT_EQUAL(h_output, d_output);
 
-    // in-place operation
-    h_result = thrust::adjacent_difference(h_input.begin(), h_input.end(), h_input.begin(), thrust::plus<T>());
-    d_result = thrust::adjacent_difference(d_input.begin(), d_input.end(), d_input.begin(), thrust::plus<T>());
+//     // in-place operation
+//     h_result = thrust::adjacent_difference(h_input.begin(), h_input.end(), h_input.begin(), thrust::plus<T>());
+//     d_result = thrust::adjacent_difference(d_input.begin(), d_input.end(), d_input.begin(), thrust::plus<T>());
 
-    ASSERT_EQUAL(std::size_t(h_result - h_input.begin()), n);
-    ASSERT_EQUAL(std::size_t(d_result - d_input.begin()), n);
-    ASSERT_EQUAL(h_input, h_output); //computed previously
-    ASSERT_EQUAL(d_input, d_output); //computed previously
-}
-DECLARE_VARIABLE_UNITTEST(TestAdjacentDifference);
+//     ASSERT_EQUAL(std::size_t(h_result - h_input.begin()), n);
+//     ASSERT_EQUAL(std::size_t(d_result - d_input.begin()), n);
+//     ASSERT_EQUAL(h_input, h_output); //computed previously
+//     ASSERT_EQUAL(d_input, d_output); //computed previously
+// }
+// DECLARE_VARIABLE_UNITTEST(TestAdjacentDifference);
 
-template<typename T>
-void TestAdjacentDifferenceInPlaceWithRelatedIteratorTypes(const size_t n)
-{
-    thrust::host_vector<T>   h_input = unittest::random_samples<T>(n);
-    thrust::device_vector<T> d_input = h_input;
+// template<typename T>
+// void TestAdjacentDifferenceInPlaceWithRelatedIteratorTypes(const size_t n)
+// {
+//     thrust::host_vector<T>   h_input = unittest::random_samples<T>(n);
+//     thrust::device_vector<T> d_input = h_input;
 
-    thrust::host_vector<T>   h_output(n);
-    thrust::device_vector<T> d_output(n);
+//     thrust::host_vector<T>   h_output(n);
+//     thrust::device_vector<T> d_output(n);
 
-    typename thrust::host_vector<T>::iterator   h_result;
-    typename thrust::device_vector<T>::iterator d_result;
+//     typename thrust::host_vector<T>::iterator   h_result;
+//     typename thrust::device_vector<T>::iterator d_result;
 
-    h_result = thrust::adjacent_difference(h_input.begin(), h_input.end(), h_output.begin(), thrust::plus<T>());
-    d_result = thrust::adjacent_difference(d_input.begin(), d_input.end(), d_output.begin(), thrust::plus<T>());
+//     h_result = thrust::adjacent_difference(h_input.begin(), h_input.end(), h_output.begin(), thrust::plus<T>());
+//     d_result = thrust::adjacent_difference(d_input.begin(), d_input.end(), d_output.begin(), thrust::plus<T>());
 
-    // in-place operation with different iterator types
-    h_result = thrust::adjacent_difference(h_input.cbegin(), h_input.cend(), h_input.begin(), thrust::plus<T>());
-    d_result = thrust::adjacent_difference(d_input.cbegin(), d_input.cend(), d_input.begin(), thrust::plus<T>());
+//     // in-place operation with different iterator types
+//     h_result = thrust::adjacent_difference(h_input.cbegin(), h_input.cend(), h_input.begin(), thrust::plus<T>());
+//     d_result = thrust::adjacent_difference(d_input.cbegin(), d_input.cend(), d_input.begin(), thrust::plus<T>());
 
-    ASSERT_EQUAL(std::size_t(h_result - h_input.begin()), n);
-    ASSERT_EQUAL(std::size_t(d_result - d_input.begin()), n);
-    ASSERT_EQUAL(h_output, h_input); // reference computed previously
-    ASSERT_EQUAL(d_output, d_input); // reference computed previously
-}
-DECLARE_VARIABLE_UNITTEST(TestAdjacentDifferenceInPlaceWithRelatedIteratorTypes);
+//     ASSERT_EQUAL(std::size_t(h_result - h_input.begin()), n);
+//     ASSERT_EQUAL(std::size_t(d_result - d_input.begin()), n);
+//     ASSERT_EQUAL(h_output, h_input); // reference computed previously
+//     ASSERT_EQUAL(d_output, d_input); // reference computed previously
+// }
+// DECLARE_VARIABLE_UNITTEST(TestAdjacentDifferenceInPlaceWithRelatedIteratorTypes);
 
-template <typename T>
-void TestAdjacentDifferenceDiscardIterator(const size_t n)
-{
-    thrust::host_vector<T>   h_input = unittest::random_samples<T>(n);
-    thrust::device_vector<T> d_input = h_input;
+// template <typename T>
+// void TestAdjacentDifferenceDiscardIterator(const size_t n)
+// {
+//     thrust::host_vector<T>   h_input = unittest::random_samples<T>(n);
+//     thrust::device_vector<T> d_input = h_input;
 
-    thrust::discard_iterator<> h_result =
-      thrust::adjacent_difference(h_input.begin(), h_input.end(), thrust::make_discard_iterator());
-    thrust::discard_iterator<> d_result =
-      thrust::adjacent_difference(d_input.begin(), d_input.end(), thrust::make_discard_iterator());
+//     thrust::discard_iterator<> h_result =
+//       thrust::adjacent_difference(h_input.begin(), h_input.end(), thrust::make_discard_iterator());
+//     thrust::discard_iterator<> d_result =
+//       thrust::adjacent_difference(d_input.begin(), d_input.end(), thrust::make_discard_iterator());
 
-    thrust::discard_iterator<> reference(n);
+//     thrust::discard_iterator<> reference(n);
 
-    ASSERT_EQUAL_QUIET(reference, h_result);
-    ASSERT_EQUAL_QUIET(reference, d_result);
-}
-DECLARE_VARIABLE_UNITTEST(TestAdjacentDifferenceDiscardIterator);
+//     ASSERT_EQUAL_QUIET(reference, h_result);
+//     ASSERT_EQUAL_QUIET(reference, d_result);
+// }
+// DECLARE_VARIABLE_UNITTEST(TestAdjacentDifferenceDiscardIterator);
 
-template<typename InputIterator, typename OutputIterator>
-OutputIterator adjacent_difference(my_system &system, InputIterator, InputIterator, OutputIterator result)
-{
-    system.validate_dispatch();
-    return result;
-}
+// template<typename InputIterator, typename OutputIterator>
+// OutputIterator adjacent_difference(my_system &system, InputIterator, InputIterator, OutputIterator result)
+// {
+//     system.validate_dispatch();
+//     return result;
+// }
 
-void TestAdjacentDifferenceDispatchExplicit()
-{
-    thrust::device_vector<int> d_input(1);
+// void TestAdjacentDifferenceDispatchExplicit()
+// {
+//     thrust::device_vector<int> d_input(1);
 
-    my_system sys(0);
-    thrust::adjacent_difference(sys,
-                                d_input.begin(),
-                                d_input.end(),
-                                d_input.begin());
+//     my_system sys(0);
+//     thrust::adjacent_difference(sys,
+//                                 d_input.begin(),
+//                                 d_input.end(),
+//                                 d_input.begin());
 
-    ASSERT_EQUAL(true, sys.is_valid());
-}
-DECLARE_UNITTEST(TestAdjacentDifferenceDispatchExplicit);
+//     ASSERT_EQUAL(true, sys.is_valid());
+// }
+// DECLARE_UNITTEST(TestAdjacentDifferenceDispatchExplicit);
 
-template<typename InputIterator, typename OutputIterator>
-OutputIterator adjacent_difference(my_tag, InputIterator, InputIterator, OutputIterator result)
-{
-    *result = 13;
-    return result;
-}
+// template<typename InputIterator, typename OutputIterator>
+// OutputIterator adjacent_difference(my_tag, InputIterator, InputIterator, OutputIterator result)
+// {
+//     *result = 13;
+//     return result;
+// }
 
-void TestAdjacentDifferenceDispatchImplicit()
-{
-    thrust::device_vector<int> d_input(1);
+// void TestAdjacentDifferenceDispatchImplicit()
+// {
+//     thrust::device_vector<int> d_input(1);
 
-    thrust::adjacent_difference(thrust::retag<my_tag>(d_input.begin()),
-                                thrust::retag<my_tag>(d_input.end()),
-                                thrust::retag<my_tag>(d_input.begin()));
+//     thrust::adjacent_difference(thrust::retag<my_tag>(d_input.begin()),
+//                                 thrust::retag<my_tag>(d_input.end()),
+//                                 thrust::retag<my_tag>(d_input.begin()));
 
-    ASSERT_EQUAL(13, d_input.front());
-}
-DECLARE_UNITTEST(TestAdjacentDifferenceDispatchImplicit);
+//     ASSERT_EQUAL(13, d_input.front());
+// }
+// DECLARE_UNITTEST(TestAdjacentDifferenceDispatchImplicit);

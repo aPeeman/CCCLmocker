@@ -151,7 +151,12 @@ struct sm80_tuning<T, primitive_op::yes, primitive_accum::yes, accum_size::_1>
 template <class T>
 struct sm80_tuning<T, primitive_op::yes, primitive_accum::yes, accum_size::_2>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 352;
+#else
+  static constexpr int threads = 256;
+#endif
+
   static constexpr int items   = 16;
 
   using delay_constructor = detail::fixed_delay_constructor_t<488, 1040>;
@@ -175,7 +180,12 @@ struct sm80_tuning<T, primitive_op::yes, primitive_accum::yes, accum_size::_4>
 template <class T>
 struct sm80_tuning<T, primitive_op::yes, primitive_accum::yes, accum_size::_8>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 288;
+#else
+  static constexpr int threads = 256;
+#endif
+
   static constexpr int items   = 22;
 
   using delay_constructor = detail::fixed_delay_constructor_t<716, 785>;
@@ -187,7 +197,11 @@ struct sm80_tuning<T, primitive_op::yes, primitive_accum::yes, accum_size::_8>
 template <>
 struct sm80_tuning<float, primitive_op::yes, primitive_accum::yes, accum_size::_4>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 288;
+#else
+  static constexpr int threads = 256;
+#endif
   static constexpr int items   = 8;
 
   using delay_constructor = detail::fixed_delay_constructor_t<724, 1050>;
@@ -351,8 +365,11 @@ struct DeviceScanPolicy
                                  BLOCK_SCAN_WARP_SCANS,
                                  typename tuning::delay_constructor>;
   };
-
+#ifdef USE_GPU_FUSION_PTX
   using MaxPolicy = Policy900;
+#else //USE_GPU_FUSION_PTX
+  using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
 };
 
 

@@ -45,7 +45,7 @@ DECLARE_LAUNCH_WRAPPER(cub::DeviceScan::ExclusiveScan, device_exclusive_scan);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceScan::InclusiveSum, device_inclusive_sum);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceScan::InclusiveScan, device_inclusive_scan);
 
-// %PARAM% TEST_LAUNCH lid 0:1
+// %PARAM% TEST_LAUNCH lid 0
 
 // List of types to test
 using custom_t = c2h::custom_type_t<c2h::accumulateable_t,

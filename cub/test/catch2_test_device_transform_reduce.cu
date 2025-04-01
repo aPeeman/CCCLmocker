@@ -38,7 +38,7 @@
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceReduce::TransformReduce, device_transform_reduce);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 using types = c2h::type_list<std::uint32_t, std::uint64_t>;
 

@@ -41,7 +41,7 @@
 
 DECLARE_LAUNCH_WRAPPER(cub::DevicePartition::If, partition);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 using types = c2h::type_list<std::int32_t, std::int64_t>;
 

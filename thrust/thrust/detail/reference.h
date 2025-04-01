@@ -43,6 +43,31 @@
 
 THRUST_NAMESPACE_BEGIN
 
+template<typename CharT, typename Traits, typename Tuple, size_t... Is>
+void print_tuple_impl(std::basic_ostream<CharT, Traits>& os,  Tuple const& t, std::index_sequence<Is...>) {
+    size_t i = 0;
+    ((os << thrust::get<Is>(t) << (i++ < sizeof...(Is) - 1 ? ", " : "")), ...);
+}
+
+template<typename CharT, typename Traits, typename... Args>
+std::basic_ostream<CharT, Traits>& operator<<(
+    std::basic_ostream<CharT, Traits>& os,
+     thrust::tuple<Args...> const& t) {
+    os << "(";
+    if constexpr (sizeof...(Args) > 0) {
+        print_tuple_impl(os, t, std::index_sequence_for<Args...>{});
+    }
+    os << ")";
+    return os;
+}
+
+template<typename CharT, typename Traits>
+std::basic_ostream<CharT, Traits>& operator<<(
+    std::basic_ostream<CharT, Traits>& os,
+     thrust::tuple<>const& t) {
+    return os << "()";
+}
+
 namespace detail
 {
 template <typename>

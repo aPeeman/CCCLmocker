@@ -152,6 +152,34 @@ namespace __reduce {
                                                  ReducePolicy4B>::type type;
   };    // Tuning sm35
 
+#ifndef USE_GPU_FUSION_THRUST
+  template <class T>
+  struct Tuning<sm52, T> : Tuning<sm35,T>
+  {
+    // ReducePolicy1B (GTX Titan: 228.7 GB/s @ 192M 1B items)
+    typedef PtxPolicy<128,
+                      CUB_MAX(1, 24 / Tuning::SCALE_FACTOR_1B),
+                      4,
+                      cub::BLOCK_REDUCE_WARP_REDUCTIONS,
+                      cub::LOAD_LDG,
+                      cub::GRID_MAPPING_DYNAMIC>
+        ReducePolicy1B;
+
+    // ReducePolicy4B types (GTX Titan: 255.1 GB/s @ 48M 4B items)
+    typedef PtxPolicy<256,
+                      CUB_MAX(1, 20 / Tuning::SCALE_FACTOR_4B),
+                      4,
+                      cub::BLOCK_REDUCE_WARP_REDUCTIONS,
+                      cub::LOAD_LDG,
+                      cub::GRID_MAPPING_DYNAMIC>
+        ReducePolicy4B;
+
+    typedef typename thrust::detail::conditional<(sizeof(T) < 4),
+                                                 ReducePolicy1B,
+                                                 ReducePolicy4B>::type type;
+  };  
+#endif //USE_GPU_FUSION_THRUST
+
   template <class InputIt,
             class OutputIt,
             class T,
@@ -1004,7 +1032,7 @@ T reduce_n_impl(execution_policy<Derived>& policy,
 //-------------------------
 // Thrust API entry points
 //-------------------------
-
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <typename Derived,
           typename InputIt,
@@ -1031,6 +1059,87 @@ T reduce_n(execution_policy<Derived>& policy,
                                              binary_op);));
   return init;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <typename Derived,
+          typename InputIt,
+          typename Size,
+          typename T,
+          typename BinaryOp>
+_CCCL_HOST_DEVICE
+T reduce_n(execution_policy<Derived>& policy,
+           InputIt                    first,
+           Size                       num_items,
+           T                          init,
+           BinaryOp                   binary_op)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (init =
+                         thrust::cuda_cub::detail::reduce_n_impl(policy,
+                                                                 first,
+                                                                 num_items,
+                                                                 init,
+                                                                 binary_op);),
+     // CDP sequential impl:
+    (init = thrust::reduce(cvt_to_seq(derived_cast(policy)),
+                                             first,
+                                             first + num_items,
+                                             init,
+                                             binary_op);    ));
+  return init;                                             
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static T par(execution_policy<Derived>& policy,
+           InputIt                    first,
+           Size                       num_items,
+           T                          init,
+           BinaryOp                   binary_op)
+    {
+			return thrust::cuda_cub::detail::reduce_n_impl(policy,
+                                                                 first,
+                                                                 num_items,
+                                                                 init,
+                                                                 binary_op);
+    }
+    __device__
+    static T par(execution_policy<Derived>& policy,
+           InputIt                    first,
+           Size                       num_items,
+           T                          init,
+           BinaryOp                   binary_op)
+    {
+		  return thrust::reduce(cvt_to_seq(derived_cast(policy)),
+                                             first,
+                                             first + num_items,
+                                             init,
+                                             binary_op);
+    }
+    __device__
+    static T seq(execution_policy<Derived>& policy,
+           InputIt                    first,
+           Size                       num_items,
+           T                          init,
+           BinaryOp                   binary_op) 
+    {
+			return thrust::reduce(cvt_to_seq(derived_cast(policy)),
+                                             first,
+                                             first + num_items,
+                                             init,
+                                             binary_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, num_items, init, binary_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, num_items, init, binary_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+
+#endif //USE_GPU_FUSION_THRUST
 
 template <class Derived, class InputIt, class T, class BinaryOp>
 _CCCL_HOST_DEVICE

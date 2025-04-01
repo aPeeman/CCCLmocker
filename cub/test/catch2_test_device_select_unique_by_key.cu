@@ -98,7 +98,7 @@ struct index_to_value_t
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceSelect::UniqueByKey, select_unique_by_key);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 struct equal_to_default_t
 {

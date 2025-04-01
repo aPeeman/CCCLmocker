@@ -57,6 +57,7 @@ namespace detail
 static _CCCL_DEVICE _CCCL_FORCEINLINE uint4 load_relaxed(uint4 const *ptr)
 {
   uint4 retval;
+#ifdef USE_GPU_FUSION_PTX
   NV_IF_TARGET(NV_PROVIDES_SM_70,
                (asm volatile("ld.relaxed.gpu.v4.u32 {%0, %1, %2, %3}, [%4];"
                              : "=r"(retval.x), "=r"(retval.y), "=r"(retval.z), "=r"(retval.w)
@@ -66,12 +67,17 @@ static _CCCL_DEVICE _CCCL_FORCEINLINE uint4 load_relaxed(uint4 const *ptr)
                              : "=r"(retval.x), "=r"(retval.y), "=r"(retval.z), "=r"(retval.w)
                              : _CUB_ASM_PTR_(ptr)
                              : "memory");));
-  return retval;
+#else
+        __threadfence();                                                                    \
+        return __ldcg(ptr);
+#endif
+
 }
 
 static _CCCL_DEVICE _CCCL_FORCEINLINE ulonglong2 load_relaxed(ulonglong2 const *ptr)
 {
   ulonglong2 retval;
+#ifdef USE_GPU_FUSION_PTX
   NV_IF_TARGET(NV_PROVIDES_SM_70,
                (asm volatile("ld.relaxed.gpu.v2.u64 {%0, %1}, [%2];"
                              : "=l"(retval.x), "=l"(retval.y)
@@ -81,12 +87,17 @@ static _CCCL_DEVICE _CCCL_FORCEINLINE ulonglong2 load_relaxed(ulonglong2 const *
                              : "=l"(retval.x), "=l"(retval.y)
                              : _CUB_ASM_PTR_(ptr)
                              : "memory");));
-  return retval;
+#else
+        __threadfence();                                                                    \
+        return __ldcg(ptr);
+#endif
+
 }
 
 static _CCCL_DEVICE _CCCL_FORCEINLINE ushort4 load_relaxed(ushort4 const *ptr)
 {
   ushort4 retval;
+#ifdef USE_GPU_FUSION_PTX  
   NV_IF_TARGET(NV_PROVIDES_SM_70,
                (asm volatile("ld.relaxed.gpu.v4.u16 {%0, %1, %2, %3}, [%4];"
                              : "=h"(retval.x), "=h"(retval.y), "=h"(retval.z), "=h"(retval.w)
@@ -96,12 +107,17 @@ static _CCCL_DEVICE _CCCL_FORCEINLINE ushort4 load_relaxed(ushort4 const *ptr)
                              : "=h"(retval.x), "=h"(retval.y), "=h"(retval.z), "=h"(retval.w)
                              : _CUB_ASM_PTR_(ptr)
                              : "memory");));
-  return retval;
+#else
+        __threadfence();                                                                    \
+        return __ldcg(ptr);
+#endif
+
 }
 
 static _CCCL_DEVICE _CCCL_FORCEINLINE uint2 load_relaxed(uint2 const *ptr)
 {
   uint2 retval;
+#ifdef USE_GPU_FUSION_PTX    
   NV_IF_TARGET(NV_PROVIDES_SM_70,
                (asm volatile("ld.relaxed.gpu.v2.u32 {%0, %1}, [%2];"
                              : "=r"(retval.x), "=r"(retval.y)
@@ -111,12 +127,17 @@ static _CCCL_DEVICE _CCCL_FORCEINLINE uint2 load_relaxed(uint2 const *ptr)
                              : "=r"(retval.x), "=r"(retval.y)
                              : _CUB_ASM_PTR_(ptr)
                              : "memory");));
-  return retval;
+#else
+        __threadfence();                                                                    \
+        return __ldcg(ptr);
+#endif
+
 }
 
 static _CCCL_DEVICE _CCCL_FORCEINLINE unsigned long long load_relaxed(unsigned long long const *ptr)
 {
   unsigned long long retval;
+#ifdef USE_GPU_FUSION_PTX
   NV_IF_TARGET(NV_PROVIDES_SM_70,
                (asm volatile("ld.relaxed.gpu.u64 %0, [%1];"
                              : "=l"(retval)
@@ -126,12 +147,17 @@ static _CCCL_DEVICE _CCCL_FORCEINLINE unsigned long long load_relaxed(unsigned l
                              : "=l"(retval)
                              : _CUB_ASM_PTR_(ptr)
                              : "memory");));
-  return retval;
+#else
+        __threadfence();                                                                    \
+        return __ldcg(ptr);
+#endif
+
 }
 
 static _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int load_relaxed(unsigned int const *ptr)
 {
   unsigned int retval;
+#ifdef USE_GPU_FUSION_PTX
   NV_IF_TARGET(NV_PROVIDES_SM_70,
                (asm volatile("ld.relaxed.gpu.u32 %0, [%1];"
                              : "=r"(retval)
@@ -142,12 +168,17 @@ static _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int load_relaxed(unsigned int con
                              : _CUB_ASM_PTR_(ptr)
                              : "memory");));
 
-  return retval;
+#else
+        __threadfence();                                                                    \
+        return __ldcg(ptr);
+#endif
+
 }
 
 static _CCCL_DEVICE _CCCL_FORCEINLINE unsigned short load_relaxed(unsigned short const *ptr)
 {
   unsigned short retval;
+#ifdef USE_GPU_FUSION_PTX
   NV_IF_TARGET(NV_PROVIDES_SM_70,
                (asm volatile("ld.relaxed.gpu.u16 %0, [%1];"
                              : "=h"(retval)
@@ -157,12 +188,17 @@ static _CCCL_DEVICE _CCCL_FORCEINLINE unsigned short load_relaxed(unsigned short
                              : "=h"(retval)
                              : _CUB_ASM_PTR_(ptr)
                              : "memory");));
-  return retval;
+#else
+        __threadfence();                                                                    \
+        return __ldcg(ptr);
+#endif
+
 }
 
 static _CCCL_DEVICE _CCCL_FORCEINLINE unsigned char load_relaxed(unsigned char const *ptr)
 {
   unsigned short retval;
+#ifdef USE_GPU_FUSION_PTX
   NV_IF_TARGET(NV_PROVIDES_SM_70,
                (asm volatile("{"
                              "  .reg .u8 datum;"
@@ -180,7 +216,11 @@ static _CCCL_DEVICE _CCCL_FORCEINLINE unsigned char load_relaxed(unsigned char c
                              : "=h"(retval)
                              : _CUB_ASM_PTR_(ptr)
                              : "memory");));
-  return (unsigned char)retval;
+#else
+        __threadfence();                                                                    \
+        return __ldcg(ptr);
+#endif
+
 }
 
 } // namespace detail

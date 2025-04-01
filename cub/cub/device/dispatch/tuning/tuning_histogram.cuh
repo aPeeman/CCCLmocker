@@ -174,6 +174,7 @@ struct device_histogram_policy_hub
       AgentHistogramPolicy<128, TScale<8>::VALUE, BLOCK_LOAD_DIRECT, LOAD_LDG, true, BLEND, true>;
   };
 
+
   /// SM50
   struct Policy500 : ChainedPolicy<500, Policy500, Policy350>
   {
@@ -199,7 +200,11 @@ struct device_histogram_policy_hub
                                                        tuning::work_stealing>;
   };
 
+#ifdef USE_GPU_FUSION_PTX
   using MaxPolicy = Policy900;
+#else //USE_GPU_FUSION_PTX
+  using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
 };
 
 } // namespace detail

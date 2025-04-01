@@ -53,7 +53,7 @@ template <int ThreadsInBlock,
           int ItemsPerThread,
           class KeyT,
           class ActionT>
-__global__ void block_merge_sort_kernel(
+__global__ __launch_bounds__(512) void block_merge_sort_kernel(
     KeyT *data,
     int valid_items,
     KeyT oob_default,
@@ -97,7 +97,7 @@ template <int ThreadsInBlock,
           class KeyT,
           class ValueT,
           class ActionT>
-__global__ void block_merge_sort_kernel(
+__global__ __launch_bounds__(512) void block_merge_sort_kernel(
     KeyT *keys,
     ValueT *vals,
     int valid_items,
@@ -238,8 +238,14 @@ void block_merge_sort(
 // %PARAM% THREADS_IN_BLOCK bs 64:256
 
 using key_types = c2h::type_list<std::int32_t, std::int64_t>;
+#ifdef USE_GPU_FUSION_PTX
 using threads_in_block = c2h::enum_type_list<int, THREADS_IN_BLOCK>;
 using items_per_thread = c2h::enum_type_list<int, 1, 2, 10, 15>;
+#else
+using threads_in_block = c2h::enum_type_list<int, 64, 128>;
+using items_per_thread = c2h::enum_type_list<int, 1, 2, 10, 15>;
+#endif
+
 
 
 template <class TestType>

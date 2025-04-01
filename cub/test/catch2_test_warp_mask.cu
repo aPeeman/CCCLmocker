@@ -41,10 +41,17 @@ public:
   static constexpr unsigned int value() { return total_warps; }
 };
 
+#ifdef USE_GPU_FUSION_PTX
 bool is_lane_involved(unsigned int member_mask, unsigned int lane)
 {
   return member_mask & (1 << lane);
 }
+#else
+bool is_lane_involved(unsigned long long member_mask, unsigned int lane)
+{
+  return member_mask & (1ULL << lane);
+}
+#endif
 
 using logical_warp_threads      = c2h::iota<1, 32>;
 using power_of_two_warp_threads = c2h::enum_type_list<int, 1, 2, 4, 8, 16, 32>;
@@ -58,7 +65,11 @@ CUB_TEST("Warp mask ignores lanes before current logical warp",
 
   for (unsigned int warp_id = 0; warp_id < total_warps; warp_id++)
   {
+#ifdef USE_GPU_FUSION_PTX
     const unsigned int warp_mask  = cub::WarpMask<logical_warp_thread>(warp_id);
+#else
+    const unsigned long long warp_mask  = cub::WarpMask<logical_warp_thread>(warp_id);
+#endif
     const unsigned int warp_begin = logical_warp_thread * warp_id;
 
     for (unsigned int prev_warp_lane = 0; prev_warp_lane < warp_begin; prev_warp_lane++)
@@ -75,7 +86,11 @@ CUB_TEST("Warp mask involves lanes of current logical warp", "[mask][warp]", log
 
   for (unsigned int warp_id = 0; warp_id < total_warps; warp_id++)
   {
+#ifdef USE_GPU_FUSION_PTX
     const unsigned int warp_mask  = cub::WarpMask<logical_warp_thread>(warp_id);
+#else
+    const unsigned long long warp_mask  = cub::WarpMask<logical_warp_thread>(warp_id);
+#endif
     const unsigned int warp_begin = logical_warp_thread * warp_id;
     const unsigned int warp_end   = warp_begin + logical_warp_thread;
 
@@ -93,7 +108,11 @@ CUB_TEST("Warp mask ignores lanes after current logical warp", "[mask][warp]", l
 
   for (unsigned int warp_id = 0; warp_id < total_warps; warp_id++)
   {
+#ifdef USE_GPU_FUSION_PTX
     const unsigned int warp_mask  = cub::WarpMask<logical_warp_thread>(warp_id);
+#else
+    const unsigned long long warp_mask  = cub::WarpMask<logical_warp_thread>(warp_id);
+#endif
     const unsigned int warp_begin = logical_warp_thread * warp_id;
     const unsigned int warp_end   = warp_begin + logical_warp_thread;
 

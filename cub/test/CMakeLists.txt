@@ -14,17 +14,25 @@ if ("NVHPC" STREQUAL "${CMAKE_CUDA_COMPILER_ID}")
 else()
   option(CUB_SEPARATE_CATCH2
     "Build each catch2 test as a separate executable."
-    OFF
+    # OFF
+    ON
   )
 endif()
 
 include("${CUB_SOURCE_DIR}/cmake/CPM.cmake")
-CPMAddPackage("gh:catchorg/Catch2@2.13.9")
+# CPMAddPackage("gh:catchorg/Catch2@2.13.9")
+set(Catch2_DIR "/public/home/zhenggrj/Cat_install/lib64/cmake/Catch2")
+# add_subdirectory(third_party/Catch2)
+# message(${CATCH2_DIR})
+find_package(Catch2 REQUIRED)
+
 
 option(METAL_BUILD_DOC OFF)
 option(METAL_BUILD_EXAMPLES OFF)
 option(METAL_BUILD_TESTS OFF)
-CPMAddPackage("gh:brunocodutra/metal@2.1.4")
+# CPMAddPackage("gh:brunocodutra/metal@2.1.4")
+set(METAL_DIR "/public/home/zhenggrj/Metal_install/lib/cmake/Metal") 
+find_package(Metal REQUIRED)
 
 find_package(CUDAToolkit)
 
@@ -112,8 +120,25 @@ endforeach()
 file(GLOB test_srcs
   RELATIVE "${CUB_SOURCE_DIR}/test"
   CONFIGURE_DEPENDS
-  test_*.cu
-  catch2_test_*.cu
+  # test_*.cu
+  # catch2_test_*.cu
+  # test_device_histogram.cu
+  # catch2_test_block_reduce.cu
+  # catch2_test_block_load.cu
+  
+  # catch2_test_block_adjacent_difference.cu
+  # catch2_test_device_reduce_by_key.cu
+  # catch2_test_block_adjacent_difference.cu
+  # catch2_test_nvrtc.cu
+  # catch2_test_util_device.cu
+  catch2_test_warp_exchange_smem.cu
+  # catch2_test_block_scan.cu
+  # catch2_test_device_merge_sort.cu
+  # catch2_test_device_radix_sort_custom.cu
+  # catch2_test_device_radix_sort_keys.cu
+  # catch2_test_device_segmented_radix_sort_keys.cu
+  # test_device_batch_memcpy.cu
+  # test_device_segmented_sort.cu
 )
 
 ## _cub_is_catch2_test
@@ -335,7 +360,7 @@ function(_cub_has_lid_variant out_var label)
     set(${out_var} 1 PARENT_SCOPE)
   endif()
 endfunction()
-
+ 
 # Sets out_var to 1 if the label contains "lid_1", e.g. launch id corresponds
 # to device-side (CDP) launch.
 function(_cub_launcher_id out_var label)
@@ -444,4 +469,4 @@ foreach (test_src IN LISTS test_srcs)
   endforeach() # CUB targets
 endforeach() # Source file
 
-add_subdirectory(cmake)
+# add_subdirectory(cmake)

@@ -37,7 +37,7 @@ _LIBCUDACXX_BEGIN_NAMESPACE_STD
 inline _LIBCUDACXX_INLINE_VISIBILITY __half sin(__half __v)
 {
   NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53, (
-    return ::hsin(__v);
+    return hsin(__v);
   ), (
     {
       float __vf            = __v;
@@ -74,7 +74,7 @@ inline _LIBCUDACXX_INLINE_VISIBILITY __half sinh(__half __v)
 inline _LIBCUDACXX_INLINE_VISIBILITY __half cos(__half __v)
 {
   NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53, (
-    return ::hcos(__v);
+    return hcos(__v);
   ), (
     {
       float __vf            = __v;
@@ -107,7 +107,7 @@ inline _LIBCUDACXX_INLINE_VISIBILITY __half cosh(__half __v)
 inline _LIBCUDACXX_INLINE_VISIBILITY __half exp(__half __v)
 {
   NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53, (
-    return ::hexp(__v);
+    return hexp(__v);
   ), (
     {
       float __vf            = __v;
@@ -145,7 +145,7 @@ inline _LIBCUDACXX_INLINE_VISIBILITY __half atan2(__half __x, __half __y)
 inline _LIBCUDACXX_INLINE_VISIBILITY __half log(__half __x)
 {
   NV_IF_ELSE_TARGET(NV_PROVIDES_SM_53, (
-    return ::hlog(__x);
+    return hlog(__x);
   ), (
     {
       float __vf            = __x;
@@ -170,7 +170,7 @@ inline _LIBCUDACXX_INLINE_VISIBILITY __half log(__half __x)
 
 inline _LIBCUDACXX_INLINE_VISIBILITY __half sqrt(__half __x)
 {
-  NV_IF_ELSE_TARGET(NV_IS_DEVICE, (return ::hsqrt(__x);), (return __half(::sqrt(float(__x)));))
+  NV_IF_ELSE_TARGET(NV_IS_DEVICE, (return hsqrt(__x);), (return __half(sqrt(float(__x)));))
 }
 
 // floating point helper
@@ -181,7 +181,7 @@ inline _LIBCUDACXX_INLINE_VISIBILITY bool signbit(__half __v)
 
 inline _LIBCUDACXX_INLINE_VISIBILITY bool __constexpr_isnan(__half __x) noexcept
 {
-  return ::__hisnan(__x);
+  return __hisnan(__x);
 }
 
 inline _LIBCUDACXX_INLINE_VISIBILITY bool isnan(__half __v)
@@ -193,9 +193,9 @@ inline _LIBCUDACXX_INLINE_VISIBILITY bool __constexpr_isinf(__half __x) noexcept
 {
 #  if _CCCL_STD_VER >= 2020 && defined(_LIBCUDACXX_CUDACC_BELOW_12_3)
   // this is a workaround for nvbug 4362808
-  return !::__hisnan(__x) && ::__hisnan(__x - __x);
+  return !__hisnan(__x) && __hisnan(__x - __x);
 #  else // ^^^ C++20 && below 12.3 ^^^ / vvv C++17 or 12.3+ vvv
-  return ::__hisinf(__x) != 0;
+  return __hisinf(__x) != 0;
 #  endif // _CCCL_STD_VER <= 2017 || _LIBCUDACXX_CUDACC_VER < 1203000
 }
 
@@ -226,7 +226,7 @@ inline _LIBCUDACXX_INLINE_VISIBILITY __half copysign(__half __x, __half __y)
 
 inline _LIBCUDACXX_INLINE_VISIBILITY __half __constexpr_fabs(__half __x) noexcept
 {
-  return ::__habs(__x);
+  return __habs(__x);
 }
 
 inline _LIBCUDACXX_INLINE_VISIBILITY __half fabs(__half __x)
@@ -241,7 +241,7 @@ inline _LIBCUDACXX_INLINE_VISIBILITY __half abs(__half __x)
 
 inline _LIBCUDACXX_INLINE_VISIBILITY __half __constexpr_fmax(__half __x, __half __y) noexcept
 {
-  return ::__hmax(__x, __y);
+  return __hmax(__x, __y);
 }
 
 _LIBCUDACXX_END_NAMESPACE_STD

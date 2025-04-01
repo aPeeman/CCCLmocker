@@ -53,6 +53,7 @@ THRUST_NAMESPACE_BEGIN
 namespace cuda_cub {
 namespace core {
 
+#ifdef USE_GPU_FUSION_PTX
 #ifdef _NVHPC_CUDA
 #  if (__NVCOMPILER_CUDA_ARCH__ >= 600)
 #    define THRUST_TUNING_ARCH sm60
@@ -77,6 +78,11 @@ namespace core {
 #  endif
 #endif
 
+#else //USE_GPU_FUSION_PTX
+#define THRUST_TUNING_ARCH sm52
+#endif //USE_GPU_FUSION_PTX
+
+
   // Typelist - a container of types, supports up to 10 types
   // --------------------------------------------------------------------------
 
@@ -88,15 +94,27 @@ namespace core {
 
   // supported SM arch
   // ---------------------
+
+  #ifdef USE_GPU_FUSION_PTX
   struct sm30  { enum { ver = 300, warpSize = 32 }; };
   struct sm35  { enum { ver = 350, warpSize = 32 }; };
   struct sm52  { enum { ver = 520, warpSize = 32 }; };
   struct sm60  { enum { ver = 600, warpSize = 32 }; };
+  #else
+  struct sm30  { enum { ver = 300, warpSize = 64 }; };
+  struct sm35  { enum { ver = 350, warpSize = 64 }; };
+  struct sm52  { enum { ver = 520, warpSize = 64 }; };
+  struct sm60  { enum { ver = 600, warpSize = 64 }; };
+  #endif
 
   // list of sm, checked from left to right order
   // the rightmost is the lowest sm arch supported
   // --------------------------------------------
+#ifdef USE_GPU_FUSION_PTX
   typedef typelist<sm60,sm52,sm35,sm30> sm_list;
+#else
+  typedef typelist<sm52> sm_list;
+#endif
 
   // lowest supported SM arch
   // --------------------------------------------------------------------------

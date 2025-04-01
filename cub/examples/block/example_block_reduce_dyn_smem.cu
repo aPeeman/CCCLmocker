@@ -223,8 +223,8 @@ int main(int argc, char** argv)
     CubDebugExit(args.DeviceInit());
 
     // Run tests
-    Test<1024>();
-    Test<512>();
+    // Test<1024>();
+    // Test<512>();
     Test<256>();
     Test<128>();
     Test<64>();

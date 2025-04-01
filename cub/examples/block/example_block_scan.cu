@@ -303,31 +303,36 @@ int main(int argc, char** argv)
     CubDebugExit(args.DeviceInit());
 
     // Run tests
-    Test<1024, 1, BLOCK_SCAN_RAKING>();
-    Test<512, 2, BLOCK_SCAN_RAKING>();
+    // Test<1024, 1, BLOCK_SCAN_RAKING>();
+    // Test<512, 2, BLOCK_SCAN_RAKING>();
     Test<256, 4, BLOCK_SCAN_RAKING>();
     Test<128, 8, BLOCK_SCAN_RAKING>();
     Test<64, 16, BLOCK_SCAN_RAKING>();
+#ifdef USE_GPU_FUSION_PTX
     Test<32, 32, BLOCK_SCAN_RAKING>();
+#endif
 
     printf("-------------\n");
 
-    Test<1024, 1, BLOCK_SCAN_RAKING_MEMOIZE>();
-    Test<512, 2, BLOCK_SCAN_RAKING_MEMOIZE>();
+    // Test<1024, 1, BLOCK_SCAN_RAKING_MEMOIZE>();
+    // Test<512, 2, BLOCK_SCAN_RAKING_MEMOIZE>();
     Test<256, 4, BLOCK_SCAN_RAKING_MEMOIZE>();
     Test<128, 8, BLOCK_SCAN_RAKING_MEMOIZE>();
     Test<64, 16, BLOCK_SCAN_RAKING_MEMOIZE>();
+#ifdef USE_GPU_FUSION_PTX
     Test<32, 32, BLOCK_SCAN_RAKING_MEMOIZE>();
+#endif
 
     printf("-------------\n");
 
-    Test<1024, 1, BLOCK_SCAN_WARP_SCANS>();
-    Test<512, 2, BLOCK_SCAN_WARP_SCANS>();
+    // Test<1024, 1, BLOCK_SCAN_WARP_SCANS>();
+    // Test<512, 2, BLOCK_SCAN_WARP_SCANS>();
     Test<256, 4, BLOCK_SCAN_WARP_SCANS>();
     Test<128, 8, BLOCK_SCAN_WARP_SCANS>();
     Test<64, 16, BLOCK_SCAN_WARP_SCANS>();
+#ifdef USE_GPU_FUSION_PTX
     Test<32, 32, BLOCK_SCAN_WARP_SCANS>();
-
+#endif
 
     return 0;
 }

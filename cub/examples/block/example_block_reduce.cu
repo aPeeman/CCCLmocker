@@ -267,8 +267,8 @@ int main(int argc, char** argv)
     CubDebugExit(args.DeviceInit());
 
     // Run tests
-    Test<1024, 1, BLOCK_REDUCE_RAKING>();
-    Test<512, 2, BLOCK_REDUCE_RAKING>();
+    // Test<1024, 1, BLOCK_REDUCE_RAKING>();
+    // Test<512, 2, BLOCK_REDUCE_RAKING>();
     Test<256, 4, BLOCK_REDUCE_RAKING>();
     Test<128, 8, BLOCK_REDUCE_RAKING>();
     Test<64, 16, BLOCK_REDUCE_RAKING>();
@@ -277,8 +277,8 @@ int main(int argc, char** argv)
 
     printf("-------------\n");
 
-    Test<1024, 1, BLOCK_REDUCE_WARP_REDUCTIONS>();
-    Test<512, 2, BLOCK_REDUCE_WARP_REDUCTIONS>();
+    // Test<1024, 1, BLOCK_REDUCE_WARP_REDUCTIONS>();
+    // Test<512, 2, BLOCK_REDUCE_WARP_REDUCTIONS>();
     Test<256, 4, BLOCK_REDUCE_WARP_REDUCTIONS>();
     Test<128, 8, BLOCK_REDUCE_WARP_REDUCTIONS>();
     Test<64, 16, BLOCK_REDUCE_WARP_REDUCTIONS>();

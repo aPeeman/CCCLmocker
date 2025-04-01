@@ -114,7 +114,11 @@ struct WarpReduceSmem
 
     _TempStorage    &temp_storage;
     unsigned int    lane_id;
-    unsigned int    member_mask;
+#ifdef USE_GPU_FUSION_PTX
+    unsigned int member_mask;
+#else //USE_GPU_FUSION_PTX
+    unsigned long long member_mask;
+#endif  //USE_GPU_FUSION_PTX
 
 
     /******************************************************************************
@@ -224,9 +228,12 @@ struct WarpReduceSmem
     _CCCL_DEVICE _CCCL_FORCEINLINE T
     SegmentedReduce(T input, FlagT flag, ReductionOp reduction_op, Int2Type<true> /*has_ballot*/)
     {
+#ifdef USE_GPU_FUSION_PTX
         // Get the start flags for each thread in the warp.
         int warp_flags = WARP_BALLOT(flag, member_mask);
-
+#else
+        long long int warp_flags = WARP_BALLOT(flag, member_mask);
+#endif
         if (!HEAD_SEGMENTED)
             warp_flags <<= 1;
 
@@ -239,12 +246,20 @@ struct WarpReduceSmem
             warp_flags >>= (LaneId() / LOGICAL_WARP_THREADS) * LOGICAL_WARP_THREADS;
         }
 
+#ifdef USE_GPU_FUSION_PTX
         // Find next flag
         int next_flag = __clz(__brev(warp_flags));
-
+#else
+        int next_flag = __clzll(__brevll(warp_flags));
+#endif
         // Clip the next segment at the warp boundary if necessary
+#ifdef USE_GPU_FUSION_PTX
         if (LOGICAL_WARP_THREADS != 32)
             next_flag = CUB_MIN(next_flag, LOGICAL_WARP_THREADS);
+#else
+        if (LOGICAL_WARP_THREADS != 64)
+            next_flag = CUB_MIN(next_flag, LOGICAL_WARP_THREADS);
+#endif
 
         #pragma unroll
         for (int STEP = 0; STEP < STEPS; STEP++)

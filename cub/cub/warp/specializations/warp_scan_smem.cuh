@@ -102,7 +102,7 @@ struct WarpScanSmem
 
     _TempStorage    &temp_storage;
     unsigned int    lane_id;
-    unsigned int    member_mask;
+    unsigned long long    member_mask;
 
 
     /******************************************************************************

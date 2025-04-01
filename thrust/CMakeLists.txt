@@ -14,7 +14,7 @@ endif()
 #
 # Modifies the given target to include a fix for the clang host compiler case.
 # The fix consists of force-including a header into each compilation unit.
-#
+# 
 function(thrust_fix_clang_nvcc_build_for target)
   if (UNIX)
     # Path to the header containing the fix for clang + nvcc < 11.6. For more info,
@@ -101,6 +101,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(THRUST_LIBRARY_OUTPUT_DIR "${CMAKE_BINARY_DIR}/lib")
 set(THRUST_EXECUTABLE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin")
 
+add_definitions(-w)
+# add_definitions(-DUSE_GPU_WORKAROUND)
+add_definitions(-DTHRUST_RDC_ENABLED)
+add_definitions(-DCUB_DETAIL_DEBUG_ENABLE_LOG)
+
 thrust_configure_multiconfig()
 thrust_find_thrust()
 thrust_build_compiler_targets()
@@ -129,14 +134,14 @@ if (THRUST_ENABLE_TESTING)
   add_subdirectory(testing)
 endif()
 
-if (THRUST_ENABLE_EXAMPLES)
-  add_subdirectory(examples)
-endif()
+# if (THRUST_ENABLE_EXAMPLES)
+#   add_subdirectory(examples)
+# endif()
 
-if (THRUST_ENABLE_BENCHMARKS)
-  add_subdirectory(benchmarks)
-  add_subdirectory(internal/benchmark)
-endif()
+# if (THRUST_ENABLE_BENCHMARKS)
+#   add_subdirectory(benchmarks)
+#   add_subdirectory(internal/benchmark)
+# endif()
 
 if (THRUST_INCLUDE_CUB_CMAKE AND THRUST_CUDA_FOUND)
   set(CUB_IN_THRUST ON)

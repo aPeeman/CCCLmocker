@@ -125,6 +125,7 @@ THRUST_RUNTIME_FUNCTION T transform_reduce_n_impl(
 
 } // namespace detail
 
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived, class InputIt, class TransformOp, class T, class ReduceOp>
 T _CCCL_HOST_DEVICE transform_reduce(
@@ -139,6 +140,51 @@ T _CCCL_HOST_DEVICE transform_reduce(
        cvt_to_seq(derived_cast(policy)), first, first + num_items, transform_op, init, reduce_op);));
   return init;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class InputIt, class TransformOp, class T, class ReduceOp>
+T _CCCL_HOST_DEVICE transform_reduce(
+  execution_policy<Derived>& policy, InputIt first, InputIt last, TransformOp transform_op, T init, ReduceOp reduce_op)
+{
+  typedef typename iterator_traits<InputIt>::difference_type size_type;
+  const size_type num_items = static_cast<size_type>(thrust::distance(first, last));
+
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (init = thrust::cuda_cub::detail::transform_reduce_n_impl(policy, first, num_items, transform_op, init, reduce_op);),
+     // CDP sequential impl:
+    (init = thrust::transform_reduce(
+       cvt_to_seq(derived_cast(policy)), first, first + num_items, transform_op, init, reduce_op);    ));
+  return init;       
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static T par(execution_policy<Derived>& policy, InputIt first, size_type num_items, TransformOp transform_op, T init, ReduceOp reduce_op)
+    {
+			return thrust::cuda_cub::detail::transform_reduce_n_impl(policy, first, num_items, transform_op, init, reduce_op);
+    }
+    __device__
+    static T par(execution_policy<Derived>& policy, InputIt first, size_type num_items, TransformOp transform_op, T init, ReduceOp reduce_op)
+    {
+		  return thrust::transform_reduce(
+       cvt_to_seq(derived_cast(policy)), first, first + num_items, transform_op, init, reduce_op);
+    }
+    __device__
+    static T seq(execution_policy<Derived>& policy, InputIt first, size_type num_items, TransformOp transform_op, T init, ReduceOp reduce_op) 
+    {
+			return thrust::transform_reduce(
+       cvt_to_seq(derived_cast(policy)), first, first + num_items, transform_op, init, reduce_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, num_items, transform_op, init, reduce_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, num_items, transform_op, init, reduce_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 } // namespace cuda_cub
 THRUST_NAMESPACE_END

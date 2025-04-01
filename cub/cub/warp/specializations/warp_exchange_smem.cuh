@@ -85,7 +85,11 @@ class WarpExchangeSmem
 
   const unsigned int lane_id;
   const unsigned int warp_id;
-  const unsigned int member_mask;
+#ifdef USE_GPU_FUSION_PTX
+    const unsigned int member_mask;
+#else //USE_GPU_FUSION_PTX
+    const unsigned long long member_mask;
+#endif  //USE_GPU_FUSION_PTX
 
 public:
 

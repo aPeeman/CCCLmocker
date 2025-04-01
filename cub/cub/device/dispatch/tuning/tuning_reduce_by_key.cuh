@@ -666,7 +666,11 @@ struct sm80_tuning<KeyT,
                    key_size::_1,
                    accum_size::_2>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 12;
 
@@ -702,7 +706,11 @@ struct sm80_tuning<KeyT,
                    key_size::_1,
                    accum_size::_8>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 7;
 
@@ -757,7 +765,11 @@ struct sm80_tuning<KeyT,
                    key_size::_2,
                    accum_size::_2>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 14;
 
@@ -793,7 +805,11 @@ struct sm80_tuning<KeyT,
                    key_size::_2,
                    accum_size::_8>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 9;
 
@@ -811,7 +827,11 @@ struct sm80_tuning<KeyT,
                    key_size::_2,
                    accum_size::_16>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 160;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 9;
 
@@ -830,7 +850,11 @@ struct sm80_tuning<KeyT,
                    key_size::_4,
                    accum_size::_1>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 288;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 11;
 
@@ -884,7 +908,11 @@ struct sm80_tuning<KeyT,
                    key_size::_4,
                    accum_size::_8>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 9;
 
@@ -902,7 +930,11 @@ struct sm80_tuning<KeyT,
                    key_size::_4,
                    accum_size::_16>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 160;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 9;
 
@@ -921,6 +953,7 @@ struct sm80_tuning<KeyT,
                    key_size::_8,
                    accum_size::_1>
 {
+
   static constexpr int threads = 192;
 
   static constexpr int items = 10;
@@ -939,7 +972,11 @@ struct sm80_tuning<KeyT,
                    key_size::_8,
                    accum_size::_2>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 7;
 
@@ -1160,7 +1197,11 @@ struct device_reduce_by_key_policy_hub
                                                       typename tuning::delay_constructor>;
   };
 
+#ifdef USE_GPU_FUSION_PTX
   using MaxPolicy = Policy900;
+#else //USE_GPU_FUSION_PTX
+  using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
 };
 
 } // namespace detail

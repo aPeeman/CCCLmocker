@@ -58,7 +58,9 @@
 #    if defined(_CCCL_COMPILER_MSVC)
 #      pragma warning(push)
 #    endif
+#ifdef USE_GPU_FUSION_PTX
 #    include <cuda_fp8.h>
+#endif  //USE_GPU_FUSION_PTX
 #    if defined(_CCCL_COMPILER_MSVC)
 #      pragma warning(pop)
 #    endif

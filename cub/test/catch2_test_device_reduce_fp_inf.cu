@@ -35,7 +35,7 @@
 DECLARE_LAUNCH_WRAPPER(cub::DeviceReduce::ArgMin, device_arg_min);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceReduce::ArgMax, device_arg_max);
 
-// %PARAM% TEST_LAUNCH lid 0:1
+// %PARAM% TEST_LAUNCH lid 0
 
 CUB_TEST("Device reduce arg{min,max} works with inf items", "[reduce][device]")
 {

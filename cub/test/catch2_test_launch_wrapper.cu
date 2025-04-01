@@ -32,7 +32,7 @@
 #include "catch2_test_launch_helper.h"
 #include "catch2_test_helper.h"
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 template <class T>
 __global__ void cub_api_example_x2_0_kernel(const T *d_in, T *d_out, int num_items)

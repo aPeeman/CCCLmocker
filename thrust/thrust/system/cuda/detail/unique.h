@@ -721,6 +721,7 @@ namespace __unique {
 // Thrust API entry points
 //-------------------------
 
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived,
           class InputIt,
@@ -742,6 +743,76 @@ unique_copy(execution_policy<Derived> &policy,
                                   binary_pred);));
   return result;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived,
+          class InputIt,
+          class OutputIt,
+          class BinaryPred>
+OutputIt _CCCL_HOST_DEVICE
+unique_copy(execution_policy<Derived> &policy,
+            InputIt                    first,
+            InputIt                    last,
+            OutputIt                   result,
+            BinaryPred                 binary_pred)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (result = __unique::unique(policy, first, last, result, binary_pred);),
+     // CDP sequential impl:
+    (result = thrust::unique_copy(cvt_to_seq(derived_cast(policy)),
+                                  first,
+                                  last,
+                                  result,
+                                  binary_pred);    ));
+  return result;                                  
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static OutputIt par(execution_policy<Derived> &policy,
+            InputIt                    first,
+            InputIt                    last,
+            OutputIt                   result,
+            BinaryPred                 binary_pred)
+    {
+			return __unique::unique(policy, first, last, result, binary_pred);
+    }
+    __device__
+    static OutputIt par(execution_policy<Derived> &policy,
+            InputIt                    first,
+            InputIt                    last,
+            OutputIt                   result,
+            BinaryPred                 binary_pred)
+    {
+		  return thrust::unique_copy(cvt_to_seq(derived_cast(policy)),
+                                  first,
+                                  last,
+                                  result,
+                                  binary_pred);
+    }
+    __device__
+    static OutputIt seq(execution_policy<Derived> &policy,
+            InputIt                    first,
+            InputIt                    last,
+            OutputIt                   result,
+            BinaryPred                 binary_pred) 
+    {
+			return thrust::unique_copy(cvt_to_seq(derived_cast(policy)),
+                                  first,
+                                  last,
+                                  result,
+                                  binary_pred);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, result, binary_pred);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, result, binary_pred);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 template <class Derived,
           class InputIt,
@@ -758,6 +829,7 @@ unique_copy(execution_policy<Derived> &policy,
 
 
 
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived,
           class ForwardIt,
@@ -777,6 +849,69 @@ unique(execution_policy<Derived> &policy,
                           binary_pred);));
   return ret;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived,
+          class ForwardIt,
+          class BinaryPred>
+ForwardIt _CCCL_HOST_DEVICE
+unique(execution_policy<Derived> &policy,
+       ForwardIt                  first,
+       ForwardIt                  last,
+       BinaryPred                 binary_pred)
+{
+  ForwardIt ret = first;
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = cuda_cub::unique_copy(policy, first, last, first, binary_pred);),
+     // CDP sequential impl:
+    (ret = thrust::unique(cvt_to_seq(derived_cast(policy)),
+                          first,
+                          last,
+                          binary_pred);    ));
+  return ret;                          
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static ForwardIt par(execution_policy<Derived> &policy,
+       ForwardIt                  first,
+       ForwardIt                  last,
+       BinaryPred                 binary_pred)
+    {
+			return cuda_cub::unique_copy(policy, first, last, first, binary_pred);
+    }
+    __device__
+    static ForwardIt par(execution_policy<Derived> &policy,
+       ForwardIt                  first,
+       ForwardIt                  last,
+       BinaryPred                 binary_pred)
+    {
+		  return thrust::unique(cvt_to_seq(derived_cast(policy)),
+                          first,
+                          last,
+                          binary_pred);
+    }
+    __device__
+    static ForwardIt seq(execution_policy<Derived> &policy,
+       ForwardIt                  first,
+       ForwardIt                  last,
+       BinaryPred                 binary_pred) 
+    {
+			return thrust::unique(cvt_to_seq(derived_cast(policy)),
+                          first,
+                          last,
+                          binary_pred);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, last, binary_pred);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, last, binary_pred);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 template <class Derived,
           class ForwardIt>

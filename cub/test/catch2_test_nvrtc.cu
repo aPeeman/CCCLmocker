@@ -225,9 +225,9 @@ TEST_CASE("Test nvrtc", "[test][nvrtc]")
 
   constexpr int num_includes = 5;
   const char* includes[num_includes] = {
-    NVRTC_CUB_PATH,
-    NVRTC_THRUST_PATH,
-    NVRTC_LIBCUDACXX_PATH,
+    "-I../../cub",
+    "-I../../thrust",
+    "-I../../libcudacxx/include",
     NVRTC_CTK_PATH,
     arch.c_str()
   };

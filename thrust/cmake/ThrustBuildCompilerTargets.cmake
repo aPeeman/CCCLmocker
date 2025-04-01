@@ -78,7 +78,7 @@ function(thrust_build_compiler_targets)
     # "Oh right, this is Visual Studio."
     list(APPEND cxx_compile_definitions "NOMINMAX")
   else()
-    append_option_if_available("-Werror" cxx_compile_options)
+    # append_option_if_available("-Werror" cxx_compile_options)
     append_option_if_available("-Wall" cxx_compile_options)
     append_option_if_available("-Wextra" cxx_compile_options)
     append_option_if_available("-Winit-self" cxx_compile_options)

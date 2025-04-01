@@ -360,7 +360,11 @@ struct sm90_tuning<Input, flagged::yes, keep_rejects::yes, offset_size::_4, prim
 template <class Input>
 struct sm90_tuning<Input, flagged::yes, keep_rejects::yes, offset_size::_4, primitive::yes, input_size::_8>
 {
+#ifdef USE_GPU_FUSION_PTX
     static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
     static constexpr int items = 6;
 
     static constexpr BlockLoadAlgorithm load_algorithm = BLOCK_LOAD_DIRECT;
@@ -372,7 +376,12 @@ struct sm90_tuning<Input, flagged::yes, keep_rejects::yes, offset_size::_4, prim
 template <>
 struct sm90_tuning<__int128_t, flagged::yes, keep_rejects::yes, offset_size::_4, primitive::no, input_size::_16>
 {
+#ifdef USE_GPU_FUSION_PTX
     static constexpr int threads = 160;
+#else
+  static constexpr int threads = 256;
+#endif
+
     static constexpr int items = 5;
 
     static constexpr BlockLoadAlgorithm load_algorithm = BLOCK_LOAD_DIRECT;
@@ -383,7 +392,11 @@ struct sm90_tuning<__int128_t, flagged::yes, keep_rejects::yes, offset_size::_4,
 template <>
 struct sm90_tuning<__uint128_t, flagged::yes, keep_rejects::yes, offset_size::_4, primitive::no, input_size::_16>
 {
+#ifdef USE_GPU_FUSION_PTX
     static constexpr int threads = 160;
+#else
+  static constexpr int threads = 256;
+#endif
     static constexpr int items = 5;
 
     static constexpr BlockLoadAlgorithm load_algorithm = BLOCK_LOAD_DIRECT;
@@ -418,7 +431,12 @@ struct sm80_tuning
 template <class Input>
 struct sm80_tuning<Input, flagged::no, keep_rejects::no, offset_size::_4, primitive::yes, input_size::_1>
 {
+#ifdef USE_GPU_FUSION_PTX
     static constexpr int threads = 992;
+#else
+    static constexpr int threads = 256;
+#endif
+
     static constexpr int items = 20;
 
     static constexpr BlockLoadAlgorithm load_algorithm = BLOCK_LOAD_DIRECT;
@@ -487,7 +505,12 @@ struct sm80_tuning<__uint128_t, flagged::no, keep_rejects::no, offset_size::_4, 
 template <class Input>
 struct sm80_tuning<Input, flagged::yes, keep_rejects::no, offset_size::_4, primitive::yes, input_size::_1>
 {
+#ifdef USE_GPU_FUSION_PTX
     static constexpr int threads = 224;
+#else
+    static constexpr int threads = 256;
+#endif
+
     static constexpr int items = 20;
 
     static constexpr BlockLoadAlgorithm load_algorithm = BLOCK_LOAD_DIRECT;
@@ -567,7 +590,11 @@ struct sm80_tuning<Input, flagged::no, keep_rejects::yes, offset_size::_4, primi
 template <class Input>
 struct sm80_tuning<Input, flagged::no, keep_rejects::yes, offset_size::_4, primitive::yes, input_size::_2>
 {
+#ifdef USE_GPU_FUSION_PTX
     static constexpr int threads = 224;
+#else
+    static constexpr int threads = 256;
+#endif
     static constexpr int items = 18;
 
     static constexpr BlockLoadAlgorithm load_algorithm = BLOCK_LOAD_WARP_TRANSPOSE;
@@ -636,7 +663,11 @@ struct sm80_tuning<Input, flagged::yes, keep_rejects::yes, offset_size::_4, prim
 template <class Input>
 struct sm80_tuning<Input, flagged::yes, keep_rejects::yes, offset_size::_4, primitive::yes, input_size::_2>
 {
+#ifdef USE_GPU_FUSION_PTX
     static constexpr int threads = 224;
+#else
+    static constexpr int threads = 256;
+#endif
     static constexpr int items = 18;
 
     static constexpr BlockLoadAlgorithm load_algorithm = BLOCK_LOAD_WARP_TRANSPOSE;
@@ -751,7 +782,11 @@ struct device_select_policy_hub
                                                   typename tuning::delay_constructor>;
     };
 
+#ifdef USE_GPU_FUSION_PTX
     using MaxPolicy = Policy900;
+#else //USE_GPU_FUSION_PTX
+    using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
 };
 
 } // detail

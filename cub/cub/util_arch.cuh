@@ -109,7 +109,7 @@ static_assert(CUB_MAX_DEVICES > 0, "CUB_MAX_DEVICES must be greater than 0.");
 
 /// Number of threads per warp
 #ifndef CUB_LOG_WARP_THREADS
-    #define CUB_LOG_WARP_THREADS(unused) (5)
+    #define CUB_LOG_WARP_THREADS(unused) (6)
     #define CUB_WARP_THREADS(unused) (1 << CUB_LOG_WARP_THREADS(0))
 
     #define CUB_PTX_WARP_THREADS        CUB_WARP_THREADS(0)

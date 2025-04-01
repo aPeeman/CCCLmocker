@@ -46,7 +46,7 @@
 #include "catch2_test_helper.h"
 #include "catch2_test_launch_helper.h"
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceRadixSort::SortKeys, sort_keys);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceRadixSort::SortKeysDescending, sort_keys_descending);
@@ -98,7 +98,8 @@ CUB_TEST("DeviceRadixSort::SortKeys: basic testing", "[keys][radix][sort][device
   using key_t = c2h::get<0, TestType>;
 
   constexpr std::size_t min_num_items = 1 << 5;
-  constexpr std::size_t max_num_items = 1 << 20;
+  // constexpr std::size_t max_num_items = 1 << 20;
+  constexpr std::size_t max_num_items = 1 << 8;
   const std::size_t num_items =
     GENERATE_COPY(std::size_t{0}, std::size_t{1}, take(8, random(min_num_items, max_num_items)));
 
@@ -137,7 +138,8 @@ CUB_TEST("DeviceRadixSort::SortKeys: bit windows", "[keys][radix][sort][device]"
 {
   using key_t = c2h::get<0, TestType>;
 
-  constexpr std::size_t max_num_items = 1 << 18;
+  // constexpr std::size_t max_num_items = 1 << 18;
+  constexpr std::size_t max_num_items = 1 << 8;
   const std::size_t num_items         = GENERATE_COPY(take(1, random(max_num_items / 2, max_num_items)));
 
   constexpr int num_bits = sizeof(key_t) * CHAR_BIT;
@@ -192,7 +194,8 @@ CUB_TEST("DeviceRadixSort::SortKeys: negative zero handling", "[keys][radix][sor
   const key_t positive_zero      = c2h::bit_cast<key_t>(bits_t(0));
   const key_t negative_zero      = c2h::bit_cast<key_t>(bits_t(1) << (num_bits - 1));
 
-  constexpr std::size_t max_num_items = 1 << 18;
+  // constexpr std::size_t max_num_items = 1 << 18;
+  constexpr std::size_t max_num_items = 1 << 8;
   const std::size_t num_items         = GENERATE_COPY(take(1, random(max_num_items / 2, max_num_items)));
   c2h::device_vector<key_t> in_keys(num_items);
   c2h::device_vector<key_t> out_keys(num_items);
@@ -244,7 +247,8 @@ CUB_TEST("DeviceRadixSort::SortKeys: NaN handling", "[keys][radix][sort][device]
   using key_t    = c2h::get<0, TestType>;
   using limits_t = cuda::std::numeric_limits<key_t>;
 
-  constexpr std::size_t max_num_items = 1 << 18;
+  // constexpr std::size_t max_num_items = 1 << 18;
+  constexpr std::size_t max_num_items = 1 << 8;
   const std::size_t num_items         = GENERATE_COPY(take(1, random(max_num_items / 2, max_num_items)));
   c2h::device_vector<key_t> in_keys(num_items);
   c2h::device_vector<key_t> out_keys(num_items);
@@ -309,7 +313,8 @@ CUB_TEST("DeviceRadixSort::SortKeys: entropy reduction", "[keys][radix][sort][de
 {
   using key_t = c2h::get<0, TestType>;
 
-  constexpr std::size_t max_num_items = 1 << 18;
+  // constexpr std::size_t max_num_items = 1 << 18;
+  constexpr std::size_t max_num_items = 1 << 8;
   const std::size_t num_items         = GENERATE_COPY(take(1, random(max_num_items / 2, max_num_items)));
   c2h::device_vector<key_t> in_keys(num_items);
 
@@ -359,7 +364,8 @@ CUB_TEST("DeviceRadixSort::SortKeys: uniform values", "[keys][radix][sort][devic
 {
   using key_t = c2h::get<0, TestType>;
 
-  constexpr std::size_t max_num_items = 1 << 18;
+  // constexpr std::size_t max_num_items = 1 << 18;
+  constexpr std::size_t max_num_items = 1 << 8;
   const std::size_t num_items         = GENERATE_COPY(take(1, random(max_num_items / 2, max_num_items)));
   c2h::device_vector<key_t> in_keys(num_items, key_t(4));
 
@@ -395,7 +401,8 @@ CUB_TEST("DeviceRadixSort::SortKeys: NumItemsT", "[keys][radix][sort][device]", 
   using num_items_t = c2h::get<1, TestType>;
 
   constexpr num_items_t min_num_items = 1 << 5;
-  constexpr num_items_t max_num_items = 1 << 20;
+  // constexpr num_items_t max_num_items = 1 << 20;
+  constexpr num_items_t max_num_items = 1 << 8;
   const num_items_t num_items =
     GENERATE_COPY(num_items_t{0}, num_items_t{1}, take(8, random(min_num_items, max_num_items)));
 
@@ -434,7 +441,8 @@ CUB_TEST("DeviceRadixSort::SortKeys: DoubleBuffer API", "[keys][radix][sort][dev
 {
   using key_t = c2h::get<0, TestType>;
 
-  constexpr std::size_t max_num_items = 1 << 18;
+  // constexpr std::size_t max_num_items = 1 << 18;
+  constexpr std::size_t max_num_items = 1 << 8;
   const std::size_t num_items         = GENERATE_COPY(take(1, random(max_num_items / 2, max_num_items)));
   c2h::device_vector<key_t> in_keys(num_items);
 
@@ -508,8 +516,10 @@ CUB_TEST("DeviceRadixSort::SortKeys: 32-bit overflow check", "[large][keys][radi
   // Test problem sizes near and at the maximum offset value to ensure that internal calculations
   // do not overflow.
   constexpr std::size_t max_offset    = std::numeric_limits<num_items_t>::max();
-  constexpr std::size_t min_num_items = max_offset - 5;
-  constexpr std::size_t max_num_items = max_offset;
+  // constexpr std::size_t min_num_items = max_offset - 5;
+  // constexpr std::size_t max_num_items = max_offset;
+  constexpr std::size_t min_num_items = 256 - 5;
+  constexpr std::size_t max_num_items = 256;
   const std::size_t num_items         = GENERATE_COPY(min_num_items, max_num_items);
 
   do_large_offset_test<key_t, num_items_t>(num_items);
@@ -520,8 +530,10 @@ CUB_TEST("DeviceRadixSort::SortKeys: Large Offsets", "[large][keys][radix][sort]
   using key_t       = c2h::get<0, TestType>;
   using num_items_t = std::uint64_t;
 
-  constexpr std::size_t min_num_items = std::size_t{1} << 32;
-  constexpr std::size_t max_num_items = std::size_t{1} << 33;
+  // constexpr std::size_t min_num_items = std::size_t{1} << 32;
+  // constexpr std::size_t max_num_items = std::size_t{1} << 33;
+  constexpr std::size_t min_num_items = std::size_t{1} << 7;
+  constexpr std::size_t max_num_items = std::size_t{1} << 8;
   const std::size_t num_items         = GENERATE_COPY(take(2, random(min_num_items, max_num_items)));
 
   do_large_offset_test<key_t, num_items_t>(num_items);

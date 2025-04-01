@@ -256,7 +256,11 @@ struct sm80_tuning<Input, OffsetT, input_size::_4, offset_size::_4>
 template <class Input, class OffsetT>
 struct sm80_tuning<Input, OffsetT, input_size::_8, offset_size::_4>
 {
-  static constexpr int threads = 224;
+#ifdef USE_GPU_FUSION_PTX
+    static constexpr int threads = 224;
+#else
+    static constexpr int threads = 256;
+#endif
   static constexpr int items   = 11;
 
   static constexpr BlockLoadAlgorithm load_algorithm = BLOCK_LOAD_WARP_TRANSPOSE;
@@ -329,7 +333,11 @@ struct device_three_way_partition_policy_hub
                                    typename tuning::delay_constructor>;
   };
 
+#ifdef USE_GPU_FUSION_PTX
   using MaxPolicy = Policy900;
+#else  //USE_GPU_FUSION_PTX
+  using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
 };
 
 } // namespace detail

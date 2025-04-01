@@ -243,6 +243,8 @@ THRUST_RUNTIME_FUNCTION pair<KeyOutputIt, ValOutputIt> unique_by_key(
 //-------------------------
 // Thrust API entry points
 //-------------------------
+
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived, class KeyInputIt, class ValInputIt, class KeyOutputIt, class ValOutputIt, class BinaryPred>
 pair<KeyOutputIt, ValOutputIt> _CCCL_HOST_DEVICE unique_by_key_copy(
@@ -261,6 +263,73 @@ pair<KeyOutputIt, ValOutputIt> _CCCL_HOST_DEVICE unique_by_key_copy(
        cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, keys_result, values_result, binary_pred);));
   return ret;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived, class KeyInputIt, class ValInputIt, class KeyOutputIt, class ValOutputIt, class BinaryPred>
+pair<KeyOutputIt, ValOutputIt> _CCCL_HOST_DEVICE unique_by_key_copy(
+  execution_policy<Derived>& policy,
+  KeyInputIt keys_first,
+  KeyInputIt keys_last,
+  ValInputIt values_first,
+  KeyOutputIt keys_result,
+  ValOutputIt values_result,
+  BinaryPred binary_pred)
+{
+  auto ret = thrust::make_pair(keys_result, values_result);
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = detail::unique_by_key(policy, keys_first, keys_last, values_first, keys_result, values_result, binary_pred);),
+     // CDP sequential impl:
+    (ret = thrust::unique_by_key_copy(
+       cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, keys_result, values_result, binary_pred);    ));
+  return ret;       
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static pair<KeyOutputIt, ValOutputIt> par(execution_policy<Derived>& policy,
+  KeyInputIt keys_first,
+  KeyInputIt keys_last,
+  ValInputIt values_first,
+  KeyOutputIt keys_result,
+  ValOutputIt values_result,
+  BinaryPred binary_pred)
+    {
+			return detail::unique_by_key(policy, keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
+    }
+    __device__
+    static pair<KeyOutputIt, ValOutputIt> par(execution_policy<Derived>& policy,
+  KeyInputIt keys_first,
+  KeyInputIt keys_last,
+  ValInputIt values_first,
+  KeyOutputIt keys_result,
+  ValOutputIt values_result,
+  BinaryPred binary_pred)
+    {
+		  return thrust::unique_by_key_copy(
+       cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
+    }
+    __device__
+    static pair<KeyOutputIt, ValOutputIt> seq(execution_policy<Derived>& policy,
+  KeyInputIt keys_first,
+  KeyInputIt keys_last,
+  ValInputIt values_first,
+  KeyOutputIt keys_result,
+  ValOutputIt values_result,
+  BinaryPred binary_pred) 
+    {
+			return thrust::unique_by_key_copy(
+       cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 template <class Derived, class KeyInputIt, class ValInputIt, class KeyOutputIt, class ValOutputIt>
 pair<KeyOutputIt, ValOutputIt> _CCCL_HOST_DEVICE unique_by_key_copy(
@@ -276,6 +345,8 @@ pair<KeyOutputIt, ValOutputIt> _CCCL_HOST_DEVICE unique_by_key_copy(
     policy, keys_first, keys_last, values_first, keys_result, values_result, equal_to<key_type>());
 }
 
+
+#ifdef USE_GPU_FUSION_THRUST
 template <class Derived, class KeyInputIt, class ValInputIt, class BinaryPred>
 pair<KeyInputIt, ValInputIt> _CCCL_HOST_DEVICE unique_by_key(
   execution_policy<Derived>& policy,
@@ -291,6 +362,63 @@ pair<KeyInputIt, ValInputIt> _CCCL_HOST_DEVICE unique_by_key(
     (ret = thrust::unique_by_key(cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, binary_pred);));
   return ret;
 }
+#else //USE_GPU_FUSION_THRUST
+template <class Derived, class KeyInputIt, class ValInputIt, class BinaryPred>
+pair<KeyInputIt, ValInputIt> _CCCL_HOST_DEVICE unique_by_key(
+  execution_policy<Derived>& policy,
+  KeyInputIt keys_first,
+  KeyInputIt keys_last,
+  ValInputIt values_first,
+  BinaryPred binary_pred)
+{
+  auto ret = thrust::make_pair(keys_first, values_first);
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = cuda_cub::unique_by_key_copy(
+       policy, keys_first, keys_last, values_first, keys_first, values_first, binary_pred);),
+     // CDP sequential impl:
+    (ret = thrust::unique_by_key(cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, binary_pred);    ));
+  return ret;    
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static pair<KeyInputIt, ValInputIt> par(execution_policy<Derived>& policy,
+  KeyInputIt keys_first,
+  KeyInputIt keys_last,
+  ValInputIt values_first,
+  BinaryPred binary_pred)
+    {
+			return cuda_cub::unique_by_key_copy(
+       policy, keys_first, keys_last, values_first, keys_first, values_first, binary_pred);
+    }
+    __device__
+    static pair<KeyInputIt, ValInputIt> par(execution_policy<Derived>& policy,
+  KeyInputIt keys_first,
+  KeyInputIt keys_last,
+  ValInputIt values_first,
+  BinaryPred binary_pred)
+    {
+		  return thrust::unique_by_key(cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, binary_pred);
+    }
+    __device__
+    static pair<KeyInputIt, ValInputIt> seq(execution_policy<Derived>& policy,
+  KeyInputIt keys_first,
+  KeyInputIt keys_last,
+  ValInputIt values_first,
+  BinaryPred binary_pred) 
+    {
+			return thrust::unique_by_key(cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, binary_pred);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, keys_first, keys_last, values_first, binary_pred);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, keys_first, keys_last, values_first, binary_pred);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 template <class Derived, class KeyInputIt, class ValInputIt>
 pair<KeyInputIt, ValInputIt> _CCCL_HOST_DEVICE

@@ -54,10 +54,10 @@
 
 CUB_NAMESPACE_BEGIN
 
-
+// #ifdef USE_GPU_FUSION_PTX
 namespace detail
 {
-
+//NOT SUPPORTED
 template <class A = int, class = A>
 struct reduce_add_exists : ::cuda::std::false_type
 {};
@@ -83,7 +83,7 @@ struct reduce_max_exists<T, decltype(__reduce_max_sync(0xFFFFFFFF, T{}))> : ::cu
 {};
 
 }
-
+// #endif
 /**
  * @brief WarpReduceShfl provides SHFL-based variants of parallel reduction of items partitioned
  *        across a CUDA thread warp.
@@ -148,7 +148,8 @@ struct WarpReduceShfl
     int warp_id;
 
     /// 32-thread physical warp member mask of logical warp
-    ::cuda::std::uint32_t member_mask;
+    // ::cuda::std::unsigned long long member_mask;
+    unsigned long long member_mask;
 
 
     //---------------------------------------------------------------------
@@ -188,23 +189,41 @@ struct WarpReduceShfl
      * @param[in] offset
      *   Up-offset to pull from
      */
+
     _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int
     ReduceStep(unsigned int input, cub::Sum /*reduction_op*/, int last_lane, int offset)
     {
+
         unsigned int output;
         int shfl_c = last_lane | SHFL_C;   // Shuffle control (mask and last_lane)
 
         // Use predicate set from SHFL to guard against invalid peers
-        asm volatile(
-            "{"
+#ifdef USE_GPU_FUSION_PTX
+#ifdef CUB_USE_COOPERATIVE_GROUPS
+         asm volatile(
             "  .reg .u32 r0;"
             "  .reg .pred p;"
             "  shfl.sync.down.b32 r0|p, %1, %2, %3, %5;"
             "  @p add.u32 r0, r0, %4;"
             "  mov.u32 %0, r0;"
-            "}"
             : "=r"(output) : "r"(input), "r"(offset), "r"(shfl_c), "r"(input), "r"(member_mask));
-
+#else
+         asm volatile(
+            "  .reg .u32 r0;"
+            "  .reg .pred p;"
+            "  shfl.down.b32 r0|p, %1, %2, %3;"
+            "  @p add.u32 r0, r0, %4;"
+            "  mov.u32 %0, r0;"
+            : "=r"(output) : "r"(input), "r"(offset), "r"(shfl_c), "r"(input));
+#endif
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        unsigned int value = __shfl_down_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        bool isActived = (member_mask & (1ull << __lane_id()));
+        if (isActived && (lane_id + offset <= last_lane)) {
+            output += value;
+        }
+#endif //USE_GPU_FUSION_PTX
         return output;
     }
 
@@ -226,20 +245,36 @@ struct WarpReduceShfl
     _CCCL_DEVICE _CCCL_FORCEINLINE float
     ReduceStep(float input, cub::Sum /*reduction_op*/, int last_lane, int offset)
     {
+
         float output;
         int shfl_c = last_lane | SHFL_C;   // Shuffle control (mask and last_lane)
-
         // Use predicate set from SHFL to guard against invalid peers
-        asm volatile(
-            "{"
+#ifdef USE_GPU_FUSION_PTX
+#ifdef CUB_USE_COOPERATIVE_GROUPS
+         asm volatile(
             "  .reg .f32 r0;"
             "  .reg .pred p;"
             "  shfl.sync.down.b32 r0|p, %1, %2, %3, %5;"
             "  @p add.f32 r0, r0, %4;"
             "  mov.f32 %0, r0;"
-            "}"
             : "=f"(output) : "f"(input), "r"(offset), "r"(shfl_c), "f"(input), "r"(member_mask));
-
+#else
+         asm volatile(
+            "  .reg .f32 r0;"
+            "  .reg .pred p;"
+            "  shfl.down.b32 r0|p, %1, %2, %3;"
+            "  @p add.f32 r0, r0, %4;"
+            "  mov.f32 %0, r0;"
+            : "=f"(output) : "f"(input), "r"(offset), "r"(shfl_c), "f"(input));
+#endif
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        float value = __shfl_down_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        bool isActived = (member_mask & (1ull << __lane_id()));
+        if (isActived && (lane_id + offset <= last_lane)) {
+            output += value;
+        }
+#endif //USE_GPU_FUSION_PTX
         return output;
     }
 
@@ -261,11 +296,12 @@ struct WarpReduceShfl
     _CCCL_DEVICE _CCCL_FORCEINLINE unsigned long long
     ReduceStep(unsigned long long input, cub::Sum /*reduction_op*/, int last_lane, int offset)
     {
+
         unsigned long long output;
         int shfl_c = last_lane | SHFL_C;   // Shuffle control (mask and last_lane)
-
-        asm volatile(
-            "{"
+#ifdef USE_GPU_FUSION_PTX
+#ifdef CUB_USE_COOPERATIVE_GROUPS
+         asm volatile(
             "  .reg .u32 lo;"
             "  .reg .u32 hi;"
             "  .reg .pred p;"
@@ -274,10 +310,29 @@ struct WarpReduceShfl
             "  shfl.sync.down.b32 hi|p, hi, %2, %3, %4;"
             "  mov.b64 %0, {lo, hi};"
             "  @p add.u64 %0, %0, %1;"
-            "}"
             : "=l"(output) : "l"(input), "r"(offset), "r"(shfl_c), "r"(member_mask));
-
+#else
+         asm volatile(
+            "  .reg .u32 lo;"
+            "  .reg .u32 hi;"
+            "  .reg .pred p;"
+            "  mov.b64 {lo, hi}, %1;"
+            "  shfl.down.b32 lo|p, lo, %2, %3;"
+            "  shfl.down.b32 hi|p, hi, %2, %3;"
+            "  mov.b64 %0, {lo, hi};"
+            "  @p add.u64 %0, %0, %1;"
+            : "=l"(output) : "l"(input), "r"(offset), "r"(shfl_c));
+#endif
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        unsigned long long value = __shfl_down_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        bool isActived = (member_mask & (1ull << __lane_id()));
+        if (isActived && (lane_id + offset <= last_lane)) {
+            output += value;
+        }
+#endif //USE_GPU_FUSION_PTX
         return output;
+
     }
 
     /**
@@ -302,8 +357,9 @@ struct WarpReduceShfl
         int shfl_c = last_lane | SHFL_C;   // Shuffle control (mask and last_lane)
 
         // Use predicate set from SHFL to guard against invalid peers
-        asm volatile(
-            "{"
+#ifdef USE_GPU_FUSION_PTX
+#ifdef CUB_USE_COOPERATIVE_GROUPS
+         asm volatile(
             "  .reg .u32 lo;"
             "  .reg .u32 hi;"
             "  .reg .pred p;"
@@ -312,9 +368,27 @@ struct WarpReduceShfl
             "  shfl.sync.down.b32 hi|p, hi, %2, %3, %4;"
             "  mov.b64 %0, {lo, hi};"
             "  @p add.s64 %0, %0, %1;"
-            "}"
             : "=l"(output) : "l"(input), "r"(offset), "r"(shfl_c), "r"(member_mask));
-
+#else
+         asm volatile(
+            "  .reg .u32 lo;"
+            "  .reg .u32 hi;"
+            "  .reg .pred p;"
+            "  mov.b64 {lo, hi}, %1;"
+            "  shfl.down.b32 lo|p, lo, %2, %3;"
+            "  shfl.down.b32 hi|p, hi, %2, %3;"
+            "  mov.b64 %0, {lo, hi};"
+            "  @p add.s64 %0, %0, %1;"
+            : "=l"(output) : "l"(input), "r"(offset), "r"(shfl_c));
+#endif
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        long long value = __shfl_down_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        bool isActived = (member_mask & (1ull << __lane_id()));
+        if (isActived && (lane_id + offset <= last_lane)) {
+            output += value;
+        }
+#endif //USE_GPU_FUSION_PTX
         return output;
     }
 
@@ -340,8 +414,9 @@ struct WarpReduceShfl
         int shfl_c = last_lane | SHFL_C;   // Shuffle control (mask and last_lane)
 
         // Use predicate set from SHFL to guard against invalid peers
-        asm volatile(
-            "{"
+#ifdef USE_GPU_FUSION_PTX
+#ifdef CUB_USE_COOPERATIVE_GROUPS
+         asm volatile(
             "  .reg .u32 lo;"
             "  .reg .u32 hi;"
             "  .reg .pred p;"
@@ -352,9 +427,29 @@ struct WarpReduceShfl
             "  shfl.sync.down.b32 hi|p, hi, %2, %3, %4;"
             "  mov.b64 r0, {lo, hi};"
             "  @p add.f64 %0, %0, r0;"
-            "}"
             : "=d"(output) : "d"(input), "r"(offset), "r"(shfl_c), "r"(member_mask));
-
+#else
+         asm volatile(
+            "  .reg .u32 lo;"
+            "  .reg .u32 hi;"
+            "  .reg .pred p;"
+            "  .reg .f64 r0;"
+            "  mov.b64 %0, %1;"
+            "  mov.b64 {lo, hi}, %1;"
+            "  shfl.down.b32 lo|p, lo, %2, %3;"
+            "  shfl.down.b32 hi|p, hi, %2, %3;"
+            "  mov.b64 r0, {lo, hi};"
+            "  @p add.f64 %0, %0, r0;"
+            : "=d"(output) : "d"(input), "r"(offset), "r"(shfl_c));
+#endif
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        double value = __shfl_down_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        bool isActived = (member_mask & (1ull << __lane_id()));
+        if (isActived && (lane_id + offset <= last_lane)) {
+            output += value;
+        }
+#endif
         return output;
     }
 
@@ -629,14 +724,20 @@ struct WarpReduceShfl
                cub::Sum /* reduction_op */)
     {
       T output = input;
-
+#ifdef USE_GPU_FUSION_PTX
       NV_IF_TARGET(NV_PROVIDES_SM_80,
                    (output = __reduce_add_sync(member_mask, input);),
                    (output = ReduceImpl<cub::Sum>(Int2Type<1>{},
                                                   input,
                                                   LOGICAL_WARP_THREADS,
                                                   cub::Sum{});));
-
+#else //USE_GPU_FUSION_PTX     
+      NV_IF_TARGET(NV_PROVIDES_SM_80,
+                   (output = __reduce_add_sync(member_mask, input);),
+                   (
+                    printf("NOT SUPPORTED\n");
+                   ));                                             
+#endif  //USE_GPU_FUSION_PTX
       return output;
     }
 
@@ -651,13 +752,20 @@ struct WarpReduceShfl
                cub::Min /* reduction_op */)
     {
       T output = input;
-
+#ifdef USE_GPU_FUSION_PTX
       NV_IF_TARGET(NV_PROVIDES_SM_80,
                    (output = __reduce_min_sync(member_mask, input);),
                    (output = ReduceImpl<cub::Min>(Int2Type<1>{},
                                                   input,
                                                   LOGICAL_WARP_THREADS,
                                                   cub::Min{});));
+#else //USE_GPU_FUSION_PTX   
+      NV_IF_TARGET(NV_PROVIDES_SM_80,
+                   (output = __reduce_min_sync(member_mask, input);),
+                   (
+                    printf("NOT SUPPORTED\n");
+                   ));
+#endif  //USE_GPU_FUSION_PTX
 
       return output;
     }
@@ -673,14 +781,20 @@ struct WarpReduceShfl
                cub::Max /* reduction_op */)
     {
       T output = input;
-
+#ifdef USE_GPU_FUSION_PTX
       NV_IF_TARGET(NV_PROVIDES_SM_80,
                    (output = __reduce_max_sync(member_mask, input);),
                    (output = ReduceImpl<cub::Max>(Int2Type<1>{},
                                                   input,
                                                   LOGICAL_WARP_THREADS,
                                                   cub::Max{});));
-
+#else //USE_GPU_FUSION_PTX
+      NV_IF_TARGET(NV_PROVIDES_SM_80,
+                   (output = __reduce_max_sync(member_mask, input);),
+                   (
+                    printf("NOT SUPPORTED\n");                    
+                   ));
+#endif  //USE_GPU_FUSION_PTX
       return output;
     }
 
@@ -725,7 +839,8 @@ struct WarpReduceShfl
     _CCCL_DEVICE _CCCL_FORCEINLINE T SegmentedReduce(T input, FlagT flag, ReductionOp reduction_op)
     {
         // Get the start flags for each thread in the warp.
-        int warp_flags = WARP_BALLOT(flag, member_mask);
+        // int warp_flags = WARP_BALLOT(flag, member_mask);
+        unsigned long long warp_flags = WARP_BALLOT(flag, member_mask);
 
         // Convert to tail-segmented
         if (HEAD_SEGMENTED)
@@ -741,10 +856,12 @@ struct WarpReduceShfl
         }
 
         // Mask in the last lane of logical warp
-        warp_flags |= 1u << (LOGICAL_WARP_THREADS - 1);
+        // warp_flags |= 1u << (LOGICAL_WARP_THREADS - 1);
+        warp_flags |= 1ull << (LOGICAL_WARP_THREADS - 1);
 
         // Find the next set flag
-        int last_lane = __clz(__brev(warp_flags));
+        // int last_lane = __clz(__brev(warp_flags));
+        int last_lane = __clzll(__brevll(warp_flags));
 
         T output = input;
 

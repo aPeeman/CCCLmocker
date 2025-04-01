@@ -120,9 +120,15 @@ struct AgentRadixSortOnesweep
         FULL_BINS = BINS_PER_THREAD * BLOCK_THREADS == RADIX_DIGITS,
         WARP_THREADS = CUB_PTX_WARP_THREADS,
         BLOCK_WARPS = BLOCK_THREADS / WARP_THREADS,
+#if USE_GPU_FUSION_PTX        
         WARP_MASK = ~0,
         LOOKBACK_PARTIAL_MASK = 1 << (PortionOffsetT(sizeof(PortionOffsetT)) * 8 - 2),
         LOOKBACK_GLOBAL_MASK = 1 << (PortionOffsetT(sizeof(PortionOffsetT)) * 8 - 1),
+#else //USE_GPU_FUSION_PTX
+        WARP_MASK = ~0ull,
+        LOOKBACK_PARTIAL_MASK = 1ull << (PortionOffsetT(sizeof(PortionOffsetT)) * 8 - 2),
+        LOOKBACK_GLOBAL_MASK = 1ull << (PortionOffsetT(sizeof(PortionOffsetT)) * 8 - 1),
+#endif //USE_GPU_FUSION_PTX
         LOOKBACK_KIND_MASK = LOOKBACK_PARTIAL_MASK | LOOKBACK_GLOBAL_MASK,
         LOOKBACK_VALUE_MASK = ~LOOKBACK_KIND_MASK,
     };
@@ -279,7 +285,11 @@ struct AgentRadixSortOnesweep
             if (FULL_BINS || bin < RADIX_DIGITS)
             {
                 PortionOffsetT inc_sum = bins[u];
+#if USE_GPU_FUSION_PTX
                 int want_mask = ~0;
+#else //USE_GPU_FUSION_PTX
+                long long int want_mask = ~0;
+#endif //USE_GPU_FUSION_PTX
                 // backtrack as long as necessary
                 for (PortionOffsetT block_jdx = block_idx - 1; block_jdx >= 0; --block_jdx)
                 {

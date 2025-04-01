@@ -97,6 +97,7 @@ struct BlockRadixRankEmptyCallback
 namespace detail
 {
 
+#ifdef USE_GPU_FUSION_PTX
 template <int Bits, int PartialWarpThreads, int PartialWarpId>
 struct warp_in_block_matcher_t
 {
@@ -110,7 +111,23 @@ struct warp_in_block_matcher_t
     return MatchAny<Bits>(label);
   }
 };
+#else 
+template <int Bits, int PartialWarpThreads, int PartialWarpId>
+struct warp_in_block_matcher_t
+{
+  static _CCCL_DEVICE ::cuda::std::uint64_t match_any(::cuda::std::uint32_t label, ::cuda::std::uint32_t warp_id)
+  {
+    if (warp_id == static_cast<::cuda::std::uint32_t>(PartialWarpId))
+    {
+      return MatchAny<Bits, PartialWarpThreads>(label);
+    }
 
+    return MatchAny<Bits>(label);
+  }
+};
+#endif
+
+#ifdef USE_GPU_FUSION_PTX
 template <int Bits, int PartialWarpId>
 struct warp_in_block_matcher_t<Bits, 0, PartialWarpId>
 {
@@ -119,6 +136,16 @@ struct warp_in_block_matcher_t<Bits, 0, PartialWarpId>
     return MatchAny<Bits>(label);
   }
 };
+#else
+template <int Bits, int PartialWarpId>
+struct warp_in_block_matcher_t<Bits, 0, PartialWarpId>
+{
+  static _CCCL_DEVICE ::cuda::std::uint64_t match_any(::cuda::std::uint32_t label, ::cuda::std::uint32_t warp_id)
+  {
+    return MatchAny<Bits>(label);
+  }
+};
+#endif
 
 } // namespace detail
 #endif // DOXYGEN_SHOULD_SKIP_THIS
@@ -739,6 +766,8 @@ public:
      * @param[in] digit_extractor
      *   The digit extractor
      */
+
+
     template <typename UnsignedBits,
               int KEYS_PER_THREAD,
               typename DigitExtractorT,
@@ -760,7 +789,11 @@ public:
 
         volatile DigitCounterT  *digit_counters[KEYS_PER_THREAD];
         uint32_t                warp_id         = linear_tid >> LOG_WARP_THREADS;
+#ifdef USE_GPU_FUSION_PTX
         uint32_t                lane_mask_lt    = LaneMaskLt();
+#else
+        uint64_t                lane_mask_lt    = LaneMaskLt();
+#endif
 
         #pragma unroll
         for (int ITEM = 0; ITEM < KEYS_PER_THREAD; ++ITEM)
@@ -770,13 +803,21 @@ public:
 
             if (IS_DESCENDING)
                 digit = RADIX_DIGITS - digit - 1;
-
+#ifdef USE_GPU_FUSION_PTX
             // Mask of peers who have same digit as me
             uint32_t peer_mask =
               detail::warp_in_block_matcher_t<
                 RADIX_BITS,
                 PARTIAL_WARP_THREADS,
                 WARPS - 1>::match_any(digit, warp_id);
+#else
+            // Mask of peers who have same digit as me
+            uint64_t peer_mask =
+              detail::warp_in_block_matcher_t<
+                RADIX_BITS,
+                PARTIAL_WARP_THREADS,
+                WARPS - 1>::match_any(digit, warp_id);
+#endif
 
             // Pointer to smem digit counter for this key
             digit_counters[ITEM] = &temp_storage.aliasable.warp_digit_counters[digit][warp_id];
@@ -787,11 +828,19 @@ public:
             // Warp-sync
             WARP_SYNC(0xFFFFFFFF);
 
+#ifdef USE_GPU_FUSION_PTX
             // Number of peers having same digit as me
             int32_t digit_count = __popc(peer_mask);
 
             // Number of lower-ranked peers having same digit seen so far
             int32_t peer_digit_prefix = __popc(peer_mask & lane_mask_lt);
+#else
+            // Number of peers having same digit as me
+            int64_t digit_count = __popcll(peer_mask);
+
+            // Number of lower-ranked peers having same digit seen so far
+            int64_t peer_digit_prefix = __popcll(peer_mask & lane_mask_lt);
+#endif
 
             if (peer_digit_prefix == 0)
             {
@@ -966,8 +1015,11 @@ struct BlockRadixRankMatchEarlyCounts
             int warp_offsets[BLOCK_WARPS][RADIX_DIGITS];
             int warp_histograms[BLOCK_WARPS][RADIX_DIGITS][NUM_PARTS];
         };
-
+#ifdef USE_GPU_FUSION_PTX
         int match_masks[MATCH_MASKS_ALLOC_SIZE][RADIX_DIGITS];
+#else
+        long long int match_masks[MATCH_MASKS_ALLOC_SIZE][RADIX_DIGITS];
+#endif
 
         typename BlockScan::TempStorage prefix_tmp;
     };
@@ -1014,7 +1066,11 @@ struct BlockRadixRankMatchEarlyCounts
             }
             if (MATCH_ALGORITHM == WARP_MATCH_ATOMIC_OR)
             {
+#ifdef USE_GPU_FUSION_PTX
                 int* match_masks = &s.match_masks[warp][0];
+#else
+                long long int* match_masks = &s.match_masks[warp][0];
+#endif
                 #pragma unroll
                 for (int bin = lane; bin < RADIX_DIGITS; bin += WARP_THREADS)
                 {
@@ -1105,20 +1161,39 @@ struct BlockRadixRankMatchEarlyCounts
             Int2Type<WARP_MATCH_ATOMIC_OR>)
         {
             // compute key ranks
+#ifdef USE_GPU_FUSION_PTX
             int lane_mask = 1 << lane;
+#else
+            long long int lane_mask = 1ull << lane;
+#endif
             int* warp_offsets = &s.warp_offsets[warp][0];
+#ifdef USE_GPU_FUSION_PTX
             int* match_masks = &s.match_masks[warp][0];
+#else
+            long long int* match_masks = &s.match_masks[warp][0];
+#endif
             #pragma unroll
             for (int u = 0; u < KEYS_PER_THREAD; ++u)
             {
                 ::cuda::std::uint32_t bin = Digit(keys[u]);
+#ifdef USE_GPU_FUSION_PTX
                 int* p_match_mask = &match_masks[bin];
+#else
+                long long int* p_match_mask = &match_masks[bin];  
+#endif  
                 atomicOr(p_match_mask, lane_mask);
                 WARP_SYNC(WARP_MASK);
+#ifdef USE_GPU_FUSION_PTX
                 int bin_mask = *p_match_mask;
                 int leader = (WARP_THREADS - 1) - __clz(bin_mask);
                 int warp_offset = 0;
                 int popc = __popc(bin_mask & LaneMaskLe());
+#else
+                long long int bin_mask = *p_match_mask;
+                int leader = (WARP_THREADS - 1) - __clzll(bin_mask);
+                int warp_offset = 0;
+                int popc = __popcll(bin_mask & LaneMaskLe());
+#endif    
                 if (lane == leader)
                 {
                     // atomic is a bit faster
@@ -1142,6 +1217,7 @@ struct BlockRadixRankMatchEarlyCounts
             for (int u = 0; u < KEYS_PER_THREAD; ++u)
             {
                 ::cuda::std::uint32_t bin = Digit(keys[u]);
+#ifdef USE_GPU_FUSION_PTX
                 int bin_mask = detail::warp_in_block_matcher_t<RADIX_BITS,
                                                                PARTIAL_WARP_THREADS,
                                                                BLOCK_WARPS - 1>::match_any(bin,
@@ -1149,6 +1225,15 @@ struct BlockRadixRankMatchEarlyCounts
                 int leader = (WARP_THREADS - 1) - __clz(bin_mask);
                 int warp_offset = 0;
                 int popc = __popc(bin_mask & LaneMaskLe());
+#else
+                long long int bin_mask = detail::warp_in_block_matcher_t<RADIX_BITS,
+                                                               PARTIAL_WARP_THREADS,
+                                                               BLOCK_WARPS - 1>::match_any(bin,
+                                                                                           warp);
+                int leader = (WARP_THREADS - 1) - __clzll(bin_mask);
+                int warp_offset = 0;
+                int popc = __popcll(bin_mask & LaneMaskLe());
+#endif
                 if (lane == leader)
                 {
                     // atomic is a bit faster

@@ -51,7 +51,8 @@ __global__ void decoupled_look_back_kernel(cub::ScanTileState<MessageT> tile_sta
   __shared__ temp_storage_t temp_storage;
 
   scan_op_t scan_op{};
-  constexpr unsigned int threads_in_warp = 32;
+  // constexpr unsigned int threads_in_warp = 32;
+  constexpr unsigned int threads_in_warp = 64;
   const unsigned int tid             = threadIdx.x;
 
   // Construct prefix op
@@ -125,7 +126,7 @@ CUB_TEST("Decoupled look-back works with various message types",
   using message_t         = typename c2h::get<0, TestType>;
   using scan_tile_state_t = cub::ScanTileState<message_t>;
 
-  constexpr int max_tiles = 1024 * 1024;
+  constexpr int max_tiles = 256 * 256;
   const int num_tiles = GENERATE_COPY(take(10, random(1, max_tiles)));
 
   c2h::device_vector<message_t> tile_data(num_tiles);

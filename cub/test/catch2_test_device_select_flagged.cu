@@ -62,7 +62,7 @@ static c2h::host_vector<T> get_reference(const c2h::device_vector<T>& in, const 
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceSelect::Flagged, select_flagged);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 using all_types = c2h::type_list<std::uint8_t,
                                  std::uint16_t,

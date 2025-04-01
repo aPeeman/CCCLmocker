@@ -1115,6 +1115,7 @@ namespace __reduce_by_key {
 // Thrust API entry points
 //-------------------------
 
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived,
           class KeyInputIt,
@@ -1153,6 +1154,116 @@ reduce_by_key(execution_policy<Derived> &policy,
                                                binary_op);));
   return ret;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived,
+          class KeyInputIt,
+          class ValInputIt,
+          class KeyOutputIt,
+          class ValOutputIt,
+          class BinaryPred,
+          class BinaryOp>
+pair<KeyOutputIt, ValOutputIt> _CCCL_HOST_DEVICE
+reduce_by_key(execution_policy<Derived> &policy,
+              KeyInputIt                 keys_first,
+              KeyInputIt                 keys_last,
+              ValInputIt                 values_first,
+              KeyOutputIt                keys_output,
+              ValOutputIt                values_output,
+              BinaryPred                 binary_pred,
+              BinaryOp                   binary_op)
+{
+  auto ret = thrust::make_pair(keys_output, values_output);
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = __reduce_by_key::reduce_by_key(policy,
+                                                            keys_first,
+                                                            keys_last,
+                                                            values_first,
+                                                            keys_output,
+                                                            values_output,
+                                                            binary_pred,
+                                                            binary_op);),
+     // CDP sequential impl:
+    (ret =
+                         thrust::reduce_by_key(cvt_to_seq(derived_cast(policy)),
+                                               keys_first,
+                                               keys_last,
+                                               values_first,
+                                               keys_output,
+                                               values_output,
+                                               binary_pred,
+                                               binary_op);    ));
+  return ret;                                               
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static pair<KeyOutputIt, ValOutputIt> par(execution_policy<Derived> &policy,
+              KeyInputIt                 keys_first,
+              KeyInputIt                 keys_last,
+              ValInputIt                 values_first,
+              KeyOutputIt                keys_output,
+              ValOutputIt                values_output,
+              BinaryPred                 binary_pred,
+              BinaryOp                   binary_op)
+    {
+			return __reduce_by_key::reduce_by_key(policy,
+                                                            keys_first,
+                                                            keys_last,
+                                                            values_first,
+                                                            keys_output,
+                                                            values_output,
+                                                            binary_pred,
+                                                            binary_op);
+    }
+    __device__
+    static pair<KeyOutputIt, ValOutputIt> par(execution_policy<Derived> &policy,
+              KeyInputIt                 keys_first,
+              KeyInputIt                 keys_last,
+              ValInputIt                 values_first,
+              KeyOutputIt                keys_output,
+              ValOutputIt                values_output,
+              BinaryPred                 binary_pred,
+              BinaryOp                   binary_op)
+    {
+		  return thrust::reduce_by_key(cvt_to_seq(derived_cast(policy)),
+                                               keys_first,
+                                               keys_last,
+                                               values_first,
+                                               keys_output,
+                                               values_output,
+                                               binary_pred,
+                                               binary_op);
+    }
+    __device__
+    static pair<KeyOutputIt, ValOutputIt> seq(execution_policy<Derived> &policy,
+              KeyInputIt                 keys_first,
+              KeyInputIt                 keys_last,
+              ValInputIt                 values_first,
+              KeyOutputIt                keys_output,
+              ValOutputIt                values_output,
+              BinaryPred                 binary_pred,
+              BinaryOp                   binary_op) 
+    {
+			return thrust::reduce_by_key(cvt_to_seq(derived_cast(policy)),
+                                               keys_first,
+                                               keys_last,
+                                               values_first,
+                                               keys_output,
+                                               values_output,
+                                               binary_pred,
+                                               binary_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, keys_first, keys_last, values_first, keys_output, values_output, binary_pred, binary_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, keys_first, keys_last, values_first, keys_output, values_output, binary_pred, binary_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 template <class Derived,
           class KeyInputIt,

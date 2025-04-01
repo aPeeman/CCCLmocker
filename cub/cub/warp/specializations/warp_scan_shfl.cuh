@@ -106,7 +106,11 @@ struct WarpScanShfl
     unsigned int warp_id;
 
     /// 32-thread physical warp member mask of logical warp
+#ifdef USE_GPU_FUSION_PTX
     unsigned int member_mask;
+#else //USE_GPU_FUSION_PTX
+    unsigned long long member_mask;
+#endif  //USE_GPU_FUSION_PTX
 
     //---------------------------------------------------------------------
     // Construction
@@ -150,7 +154,7 @@ struct WarpScanShfl
     {
         int output;
         int shfl_c = first_lane | SHFL_C;   // Shuffle control (mask and first-lane)
-
+#ifdef USE_GPU_FUSION_PTX
         // Use predicate set from SHFL to guard against invalid peers
         asm volatile(
             "{"
@@ -161,7 +165,13 @@ struct WarpScanShfl
             "  mov.s32 %0, r0;"
             "}"
             : "=r"(output) : "r"(input), "r"(offset), "r"(shfl_c), "r"(input), "r"(member_mask));
-
+#else
+        output = input;
+        int value = __shfl_up_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        if ((int)(lane_id) >= first_lane + offset) {
+            output += value;
+        }
+#endif
         return output;
     }
 
@@ -185,7 +195,7 @@ struct WarpScanShfl
     {
         unsigned int output;
         int shfl_c = first_lane | SHFL_C;   // Shuffle control (mask and first-lane)
-
+#ifdef USE_GPU_FUSION_PTX
         // Use predicate set from SHFL to guard against invalid peers
         asm volatile(
             "{"
@@ -196,7 +206,13 @@ struct WarpScanShfl
             "  mov.u32 %0, r0;"
             "}"
             : "=r"(output) : "r"(input), "r"(offset), "r"(shfl_c), "r"(input), "r"(member_mask));
-
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        unsigned int value = __shfl_up_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        if ((int)(lane_id) >= first_lane + offset) {
+            output += value;
+        }
+#endif //USE_GPU_FUSION_PTX
         return output;
     }
 
@@ -220,7 +236,7 @@ struct WarpScanShfl
     {
         float output;
         int shfl_c = first_lane | SHFL_C;   // Shuffle control (mask and first-lane)
-
+#ifdef USE_GPU_FUSION_PTX
         // Use predicate set from SHFL to guard against invalid peers
         asm volatile(
             "{"
@@ -231,7 +247,13 @@ struct WarpScanShfl
             "  mov.f32 %0, r0;"
             "}"
             : "=f"(output) : "f"(input), "r"(offset), "r"(shfl_c), "f"(input), "r"(member_mask));
-
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        float value = __shfl_up_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        if (lane_id >= first_lane + offset) {
+            output += value;
+        }
+#endif //USE_GPU_FUSION_PTX
         return output;
     }
 
@@ -255,7 +277,7 @@ struct WarpScanShfl
     {
         unsigned long long output;
         int shfl_c = first_lane | SHFL_C;   // Shuffle control (mask and first-lane)
-
+#ifdef USE_GPU_FUSION_PTX
         // Use predicate set from SHFL to guard against invalid peers
         asm volatile(
             "{"
@@ -271,7 +293,13 @@ struct WarpScanShfl
             "  mov.u64 %0, r0;"
             "}"
             : "=l"(output) : "l"(input), "r"(offset), "r"(shfl_c), "l"(input), "r"(member_mask));
-
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        unsigned long long value = __shfl_up_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        if (lane_id >= first_lane + offset) {
+            output += value;
+        }
+#endif //USE_GPU_FUSION_PTX
         return output;
     }
 
@@ -295,7 +323,7 @@ struct WarpScanShfl
     {
         long long output;
         int shfl_c = first_lane | SHFL_C;   // Shuffle control (mask and first-lane)
-
+#ifdef USE_GPU_FUSION_PTX
         // Use predicate set from SHFL to guard against invalid peers
         asm volatile(
             "{"
@@ -311,7 +339,13 @@ struct WarpScanShfl
             "  mov.s64 %0, r0;"
             "}"
             : "=l"(output) : "l"(input), "r"(offset), "r"(shfl_c), "l"(input), "r"(member_mask));
-
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        long long value = __shfl_up_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        if (lane_id >= first_lane + offset) {
+            output += value;
+        }
+#endif //USE_GPU_FUSION_PTX
         return output;
     }
 
@@ -335,7 +369,7 @@ struct WarpScanShfl
     {
         double output;
         int shfl_c = first_lane | SHFL_C;   // Shuffle control (mask and first-lane)
-
+#ifdef USE_GPU_FUSION_PTX
         // Use predicate set from SHFL to guard against invalid peers
         asm volatile(
             "{"
@@ -351,7 +385,13 @@ struct WarpScanShfl
             "  @p add.f64 %0, %0, r0;"
             "}"
             : "=d"(output) : "d"(input), "r"(offset), "r"(shfl_c), "r"(member_mask));
-
+#else //USE_GPU_FUSION_PTX
+        output = input;
+        double value = __shfl_up_sync(0xffffffffffffffffull, input, offset, LOGICAL_WARP_THREADS);
+        if (lane_id >= first_lane + offset) {
+            output += value;
+        }
+#endif //USE_GPU_FUSION_PTX
         return output;
     }
 
@@ -546,13 +586,21 @@ struct WarpScanShfl
 
         KeyT pred_key = ShuffleUp<LOGICAL_WARP_THREADS>(inclusive_output.key, 1, 0, member_mask);
 
+#ifdef USE_GPU_FUSION_PTX
         unsigned int ballot = WARP_BALLOT((pred_key != inclusive_output.key), member_mask);
+#else //USE_GPU_FUSION_PTX
+        unsigned long long ballot = WARP_BALLOT((pred_key != inclusive_output.key), member_mask);
+#endif  //USE_GPU_FUSION_PTX
 
         // Mask away all lanes greater than ours
         ballot = ballot & LaneMaskLe();
 
         // Find index of first set bit
+#ifdef USE_GPU_FUSION_PTX
         int segment_first_lane = CUB_MAX(0, 31 - __clz(ballot));
+#else //USE_GPU_FUSION_PTX        
+        int segment_first_lane = CUB_MAX(0, 63 - __clzll(ballot));
+#endif  //USE_GPU_FUSION_PTX
 
         // Iterate scan steps
         #pragma unroll

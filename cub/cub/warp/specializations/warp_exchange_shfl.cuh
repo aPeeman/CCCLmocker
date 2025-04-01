@@ -66,6 +66,7 @@ class WarpExchangeShfl
   protected:
     InputT val;
 
+#ifdef USE_GPU_FUSION_PTX
     template <int NUM_ENTRIES>
     _CCCL_DEVICE void Foreach(const bool xor_bit_set, const unsigned mask)
     {
@@ -217,9 +218,25 @@ class WarpExchangeShfl
       constexpr int next_idx = IDX + 1 + ((IDX + 1) % NUM_ENTRIES == 0) * NUM_ENTRIES;
       CompileTimeArray<OutputT, next_idx, SIZE>::template Foreach<NUM_ENTRIES>(xor_bit_set, mask);
     }
+#else //USE_GPU_FUSION_PTX
+    template <int NUM_ENTRIES>
+    _CCCL_DEVICE void Foreach(const bool xor_bit_set, const unsigned long long mask)
+    {
+      const InputT send_val = (xor_bit_set ? CompileTimeArray<OutputT, IDX, SIZE>::val
+                                           : CompileTimeArray<OutputT, IDX + NUM_ENTRIES, SIZE>::val);
+      const InputT recv_val = __shfl_xor_sync(mask, send_val, NUM_ENTRIES, LOGICAL_WARP_THREADS);
+      (xor_bit_set ? CompileTimeArray<OutputT, IDX, SIZE>::val
+                   : CompileTimeArray<OutputT, IDX + NUM_ENTRIES, SIZE>::val) = recv_val;
 
+      constexpr int next_idx = IDX + 1 + ((IDX + 1) % NUM_ENTRIES == 0) * NUM_ENTRIES;
+      CompileTimeArray<OutputT, next_idx, SIZE>::template Foreach<NUM_ENTRIES>(xor_bit_set, mask);
+    }
+#endif //USE_GPU_FUSION_PTX
+#ifdef USE_GPU_FUSION_PTX
     // terminate recursion
     _CCCL_DEVICE void TransposeImpl(unsigned int, unsigned int, Int2Type<0>) {}
+
+
 
     template <int NUM_ENTRIES>
     _CCCL_DEVICE void TransposeImpl(const unsigned int lane_id,
@@ -245,7 +262,39 @@ class WarpExchangeShfl
     {
       TransposeImpl(lane_id, mask, Int2Type<ITEMS_PER_THREAD / 2>());
     }
+#else //USE_GPU_FUSION_PTX
+    // terminate recursion
+    _CCCL_DEVICE void TransposeImpl(unsigned int, unsigned long long, Int2Type<0>) {}
+
+
+
+    template <int NUM_ENTRIES>
+    _CCCL_DEVICE void TransposeImpl(const unsigned int lane_id,
+                                  const unsigned long long mask,
+                                  Int2Type<NUM_ENTRIES>)
+    {
+      const bool xor_bit_set = lane_id & NUM_ENTRIES;
+      Foreach<NUM_ENTRIES>(xor_bit_set, mask);
+
+      TransposeImpl(lane_id, mask, Int2Type<NUM_ENTRIES / 2>());
+    }
+
+  public:
+    _CCCL_DEVICE CompileTimeArray(const InputT (&input_items)[ITEMS_PER_THREAD],
+                                OutputT (&output_items)[ITEMS_PER_THREAD])
+        : CompileTimeArray<OutputT, IDX + 1, SIZE>{input_items, output_items}
+        , val{input_items[IDX]}
+    {}
+
+    _CCCL_DEVICE ~CompileTimeArray() { this->output_items[IDX] = val; }
+
+    _CCCL_DEVICE void Transpose(const unsigned int lane_id, const unsigned long long mask)
+    {
+      TransposeImpl(lane_id, mask, Int2Type<ITEMS_PER_THREAD / 2>());
+    }
+#endif  //USE_GPU_FUSION_PTX
   };
+
 
   // terminating partial specialization
   template <typename OutputT, int SIZE>
@@ -255,10 +304,15 @@ class WarpExchangeShfl
     // used for dumping back the individual values after transposing
     InputT (&output_items)[ITEMS_PER_THREAD];
 
+#ifdef USE_GPU_FUSION_PTX
     template <int>
     _CCCL_DEVICE void Foreach(bool, unsigned)
     {}
-
+#else //USE_GPU_FUSION_PTX
+    template <int>
+    _CCCL_DEVICE void Foreach(bool, unsigned long long)
+    {}
+#endif  //USE_GPU_FUSION_PTX
   public:
     _CCCL_DEVICE CompileTimeArray(const InputT (&)[ITEMS_PER_THREAD],
                                 OutputT (&output_items)[ITEMS_PER_THREAD])
@@ -269,7 +323,11 @@ class WarpExchangeShfl
 
   const unsigned int lane_id;
   const unsigned int warp_id;
-  const unsigned int member_mask;
+#ifdef USE_GPU_FUSION_PTX
+    unsigned int member_mask;
+#else //USE_GPU_FUSION_PTX
+    unsigned long long member_mask;
+#endif  //USE_GPU_FUSION_PTX
 
 public:
   using TempStorage = NullType;

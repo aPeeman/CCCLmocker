@@ -259,7 +259,11 @@ struct sm80_tuning<LengthT, KeyT, primitive_length::yes, primitive_key::yes, len
 template <class LengthT, class KeyT>
 struct sm80_tuning<LengthT, KeyT, primitive_length::yes, primitive_key::yes, length_size::_4, key_size::_8>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 9;
 
@@ -307,7 +311,11 @@ template <class LengthT,
           key_size KeySize                 = classify_key_size<KeyT>()>
 struct sm90_tuning
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 96;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int nominal_4b_items_per_thread = 15;
 
@@ -338,7 +346,11 @@ struct sm90_tuning<LengthT, KeyT, primitive_length::yes, primitive_key::yes, len
 template <class LengthT, class KeyT>
 struct sm90_tuning<LengthT, KeyT, primitive_length::yes, primitive_key::yes, length_size::_4, key_size::_2>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 20;
 
@@ -366,7 +378,11 @@ struct sm90_tuning<LengthT, KeyT, primitive_length::yes, primitive_key::yes, len
 template <class LengthT, class KeyT>
 struct sm90_tuning<LengthT, KeyT, primitive_length::yes, primitive_key::yes, length_size::_4, key_size::_8>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 14;
 
@@ -381,7 +397,11 @@ struct sm90_tuning<LengthT, KeyT, primitive_length::yes, primitive_key::yes, len
 template <class LengthT>
 struct sm90_tuning<LengthT, __int128_t, primitive_length::yes, primitive_key::no, length_size::_4, key_size::_16>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 288;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 9;
 
@@ -395,7 +415,11 @@ struct sm90_tuning<LengthT, __int128_t, primitive_length::yes, primitive_key::no
 template <class LengthT>
 struct sm90_tuning<LengthT, __uint128_t, primitive_length::yes, primitive_key::no, length_size::_4, key_size::_16>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 288;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 9;
 
@@ -415,7 +439,11 @@ template <class LengthT,
           key_size KeySize                 = classify_key_size<KeyT>()>
 struct sm80_tuning
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 96;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int nominal_4b_items_per_thread = 15;
 
@@ -460,7 +488,11 @@ struct sm80_tuning<LengthT, KeyT, primitive_length::yes, primitive_key::yes, len
 template <class LengthT, class KeyT>
 struct sm80_tuning<LengthT, KeyT, primitive_length::yes, primitive_key::yes, length_size::_4, key_size::_4>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 15;
 
@@ -586,7 +618,11 @@ struct device_run_length_encode_policy_hub
                              typename tuning::delay_constructor>;
   };
 
+#ifdef USE_GPU_FUSION_PTX
   using MaxPolicy = Policy900;
+#else //USE_GPU_FUSION_PTX
+  using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
 };
 
 template <class LengthT, class KeyT>
@@ -602,6 +638,7 @@ struct device_non_trivial_runs_policy_hub
                                  CUB_MAX(1, (NOMINAL_4B_ITEMS_PER_THREAD * 4 / sizeof(KeyT)))),
     };
 
+#ifdef USE_GPU_FUSION_PTX
     using RleSweepPolicyT =
       AgentRlePolicy<96,
                      ITEMS_PER_THREAD,
@@ -610,6 +647,17 @@ struct device_non_trivial_runs_policy_hub
                      true,
                      BLOCK_SCAN_WARP_SCANS,
                      detail::default_reduce_by_key_delay_constructor_t<int, int>>;
+#else //USE_GPU_FUSION_PTX
+    using RleSweepPolicyT =
+      AgentRlePolicy<256,
+                     ITEMS_PER_THREAD,
+                     BLOCK_LOAD_DIRECT,
+                     LOAD_DEFAULT,
+                     true,
+                     BLOCK_SCAN_WARP_SCANS,
+                     detail::default_reduce_by_key_delay_constructor_t<int, int>>;
+#endif //USE_GPU_FUSION_PTX
+
   };
 
   /// SM35
@@ -653,7 +701,11 @@ struct device_non_trivial_runs_policy_hub
                      typename tuning::delay_constructor>;
   };
 
+#ifdef USE_GPU_FUSION_PTX
   using MaxPolicy = Policy900;
+#else //USE_GPU_FUSION_PTX
+  using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
 };
 
 } // namespace detail

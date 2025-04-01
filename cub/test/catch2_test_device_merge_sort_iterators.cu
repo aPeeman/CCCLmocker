@@ -38,11 +38,30 @@
 
 #include <algorithm>
 
+#include<ostream>
+#include<cuda/std/tuple>
+#include<thrust/device_reference.h>
+
+std::ostream& operator<<(std::ostream& os, const cuda::std::tuple<unsigned int, int>& t){
+  os << "(" << cuda::std::get<0>(t) << ", " << cuda::std::get<1>(t) << ")";
+  return os;
+}
+
+// namespace thrust {
+//   template <typename T>
+//   std::ostream& operator<<(std::ostream& os, const device_reference<const T>& ref) {
+//     return os << static_cast<const T&>(ref);
+//   }
+// }
+
+
+
 #include "catch2_test_device_merge_sort_common.cuh"
 #include "catch2_test_helper.h"
 #include "catch2_test_launch_helper.h"
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+
+// %PARAM% TEST_LAUNCH lid 0
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceMergeSort::SortPairs, sort_pairs);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceMergeSort::SortPairsCopy, sort_pairs_copy);
@@ -52,6 +71,8 @@ DECLARE_LAUNCH_WRAPPER(cub::DeviceMergeSort::SortKeys, sort_keys);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceMergeSort::SortKeysCopy, sort_keys_copy);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceMergeSort::StableSortKeys, stable_sort_keys);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceMergeSort::StableSortKeysCopy, stable_sort_keys_copy);
+
+
 
 CUB_TEST("DeviceMergeSort::SortKeysCopy works with iterators", "[merge][sort][device]")
 {
@@ -94,7 +115,32 @@ CUB_TEST("DeviceMergeSort::StableSortKeysCopy works with iterators and is stable
   thrust::copy(keys_in_it, keys_in_it + num_items, keys_expected.begin());
   std::stable_sort(keys_expected.begin(), keys_expected.end(), compare_first_lt_op_t{});
 
+// #ifdef USE_GPU_FUSION_PTX
   REQUIRE(keys_expected == keys_out);
+// #else
+//   c2h::host_vector<thrust::tuple<key_t, offset_t>> host_keys_out = keys_out;
+//   c2h::host_vector<thrust::tuple<key_t, offset_t>> host_keys_expected = keys_expected;
+
+//   bool all_match = true;
+//   for (offset_t i = 0; i < num_items; ++i)
+//   {
+//     auto exp_key = thrust::get<0>(host_keys_expected[i]);
+//     auto exp_idx = thrust::get<1>(host_keys_expected[i]);
+//     auto out_key = thrust::get<0>(host_keys_out[i]);
+//     auto out_idx = thrust::get<1>(host_keys_out[i]);
+
+//     if (exp_key != out_key || exp_idx != out_idx)
+//     {
+//       INFO("Mismatch at index " << i << ": "
+//            << "expected (" << exp_key << ", " << exp_idx << "), "
+//            << "got (" << out_key << ", " << out_idx << ")");
+//       all_match = false;
+//       break; 
+//     }
+//   }
+
+//   REQUIRE(all_match); 
+// #endif
 }
 
 CUB_TEST("DeviceMergeSort::SortKeys works with iterators", "[merge][sort][device]")

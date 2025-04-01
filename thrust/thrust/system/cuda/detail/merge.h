@@ -863,7 +863,7 @@ namespace __merge {
 // Thrust API entry points
 //-------------------------
 
-
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived,
           class KeysIt1,
@@ -903,6 +903,118 @@ merge(execution_policy<Derived>& policy,
                                               compare_op);));
   return result;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived,
+          class KeysIt1,
+          class KeysIt2,
+          class ResultIt,
+          class CompareOp>
+ResultIt _CCCL_HOST_DEVICE
+merge(execution_policy<Derived>& policy,
+      KeysIt1                    keys1_first,
+      KeysIt1                    keys1_last,
+      KeysIt2                    keys2_first,
+      KeysIt2                    keys2_last,
+      ResultIt                   result,
+      CompareOp                  compare_op)
+
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (using keys_type  = thrust::iterator_value_t<KeysIt1>;
+                       keys_type *null_ = nullptr;
+                       auto tmp =
+                         __merge::merge<thrust::detail::false_type>(policy,
+                                                                    keys1_first,
+                                                                    keys1_last,
+                                                                    keys2_first,
+                                                                    keys2_last,
+                                                                    null_,
+                                                                    null_,
+                                                                    result,
+                                                                    null_,
+                                                                    compare_op);
+                       result = tmp.first;),
+     // CDP sequential impl:
+    (result = thrust::merge(cvt_to_seq(derived_cast(policy)),
+                                              keys1_first,
+                                              keys1_last,
+                                              keys2_first,
+                                              keys2_last,
+                                              result,
+                                              compare_op);    ));
+  return result;                                              
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static ResultIt par(execution_policy<Derived>& policy,
+      KeysIt1                    keys1_first,
+      KeysIt1                    keys1_last,
+      KeysIt2                    keys2_first,
+      KeysIt2                    keys2_last,
+      ResultIt                   result,
+      CompareOp                  compare_op)
+    {
+      using keys_type  = thrust::iterator_value_t<KeysIt1>;
+                       keys_type *null_ = nullptr;
+                       auto tmp =
+                         __merge::merge<thrust::detail::false_type>(policy,
+                                                                    keys1_first,
+                                                                    keys1_last,
+                                                                    keys2_first,
+                                                                    keys2_last,
+                                                                    null_,
+                                                                    null_,
+                                                                    result,
+                                                                    null_,
+                                                                    compare_op);
+                       return tmp.first;
+    }
+    __device__
+    static ResultIt par(execution_policy<Derived>& policy,
+      KeysIt1                    keys1_first,
+      KeysIt1                    keys1_last,
+      KeysIt2                    keys2_first,
+      KeysIt2                    keys2_last,
+      ResultIt                   result,
+      CompareOp                  compare_op)
+    {
+      return thrust::merge(cvt_to_seq(derived_cast(policy)),
+                                              keys1_first,
+                                              keys1_last,
+                                              keys2_first,
+                                              keys2_last,
+                                              result,
+                                              compare_op);
+    }
+    __device__
+    static ResultIt seq(execution_policy<Derived>& policy,
+      KeysIt1                    keys1_first,
+      KeysIt1                    keys1_last,
+      KeysIt2                    keys2_first,
+      KeysIt2                    keys2_last,
+      ResultIt                   result,
+      CompareOp                  compare_op) 
+    {
+      return thrust::merge(cvt_to_seq(derived_cast(policy)),
+                                              keys1_first,
+                                              keys1_last,
+                                              keys2_first,
+                                              keys2_last,
+                                              result,
+                                              compare_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, result, compare_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, result, compare_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 template <class Derived, class KeysIt1, class KeysIt2, class ResultIt>
 ResultIt _CCCL_HOST_DEVICE
@@ -923,6 +1035,9 @@ merge(execution_policy<Derived>& policy,
                          less<keys_type>());
 }
 
+
+
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class Derived,
           class KeysIt1,
@@ -968,6 +1083,134 @@ merge_by_key(execution_policy<Derived> &policy,
                                 compare_op);));
   return ret;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class Derived,
+          class KeysIt1,
+          class KeysIt2,
+          class ItemsIt1,
+          class ItemsIt2,
+          class KeysOutputIt,
+          class ItemsOutputIt,
+          class CompareOp>
+pair<KeysOutputIt, ItemsOutputIt> _CCCL_HOST_DEVICE
+merge_by_key(execution_policy<Derived> &policy,
+             KeysIt1                    keys1_first,
+             KeysIt1                    keys1_last,
+             KeysIt2                    keys2_first,
+             KeysIt2                    keys2_last,
+             ItemsIt1                   items1_first,
+             ItemsIt2                   items2_first,
+             KeysOutputIt               keys_result,
+             ItemsOutputIt              items_result,
+             CompareOp                  compare_op)
+{
+  auto ret = thrust::make_pair(keys_result, items_result);
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (ret = __merge::merge<thrust::detail::true_type>(policy,
+                                                     keys1_first,
+                                                     keys1_last,
+                                                     keys2_first,
+                                                     keys2_last,
+                                                     items1_first,
+                                                     items2_first,
+                                                     keys_result,
+                                                     items_result,
+                                                     compare_op);),
+     // CDP sequential impl:
+    (ret = thrust::merge_by_key(cvt_to_seq(derived_cast(policy)),
+                                keys1_first,
+                                keys1_last,
+                                keys2_first,
+                                keys2_last,
+                                items1_first,
+                                items2_first,
+                                keys_result,
+                                items_result,
+                                compare_op);    ));
+  return ret;
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static pair<KeysOutputIt, ItemsOutputIt> par(execution_policy<Derived> &policy,
+             KeysIt1                    keys1_first,
+             KeysIt1                    keys1_last,
+             KeysIt2                    keys2_first,
+             KeysIt2                    keys2_last,
+             ItemsIt1                   items1_first,
+             ItemsIt2                   items2_first,
+             KeysOutputIt               keys_result,
+             ItemsOutputIt              items_result,
+             CompareOp                  compare_op)
+    {
+      return __merge::merge<thrust::detail::true_type>(policy,
+                                                     keys1_first,
+                                                     keys1_last,
+                                                     keys2_first,
+                                                     keys2_last,
+                                                     items1_first,
+                                                     items2_first,
+                                                     keys_result,
+                                                     items_result,
+                                                     compare_op);
+    }
+    __device__
+    static pair<KeysOutputIt, ItemsOutputIt> par(execution_policy<Derived> &policy,
+             KeysIt1                    keys1_first,
+             KeysIt1                    keys1_last,
+             KeysIt2                    keys2_first,
+             KeysIt2                    keys2_last,
+             ItemsIt1                   items1_first,
+             ItemsIt2                   items2_first,
+             KeysOutputIt               keys_result,
+             ItemsOutputIt              items_result,
+             CompareOp                  compare_op)
+    {
+      return thrust::merge_by_key(cvt_to_seq(derived_cast(policy)),
+                                keys1_first,
+                                keys1_last,
+                                keys2_first,
+                                keys2_last,
+                                items1_first,
+                                items2_first,
+                                keys_result,
+                                items_result,
+                                compare_op); 
+    }
+    __device__
+    static pair<KeysOutputIt, ItemsOutputIt> seq(execution_policy<Derived> &policy,
+             KeysIt1                    keys1_first,
+             KeysIt1                    keys1_last,
+             KeysIt2                    keys2_first,
+             KeysIt2                    keys2_last,
+             ItemsIt1                   items1_first,
+             ItemsIt2                   items2_first,
+             KeysOutputIt               keys_result,
+             ItemsOutputIt              items_result,
+             CompareOp                  compare_op) 
+    {
+      return thrust::merge_by_key(cvt_to_seq(derived_cast(policy)),
+                                keys1_first,
+                                keys1_last,
+                                keys2_first,
+                                keys2_last,
+                                items1_first,
+                                items2_first,
+                                keys_result,
+                                items_result,
+                                compare_op); 
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 template <class Derived,
           class KeysIt1,

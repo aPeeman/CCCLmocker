@@ -80,6 +80,7 @@ struct BaseDigitExtractor
 
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits ProcessFloatMinusZero(UnsignedBits key)
   {
+    CTA_SYNC();
     return key;
   }
 };
@@ -92,6 +93,8 @@ struct BaseDigitExtractor<KeyT, FLOATING_POINT>
 
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits ProcessFloatMinusZero(UnsignedBits key)
   {
+
+    CTA_SYNC();
     UnsignedBits TWIDDLED_MINUS_ZERO_BITS =
         TraitsT::TwiddleIn(UnsignedBits(1) << UnsignedBits(8 * sizeof(UnsignedBits) - 1));
     UnsignedBits TWIDDLED_ZERO_BITS = TraitsT::TwiddleIn(0);

@@ -310,7 +310,11 @@ void Test()
   Test<cub::RadixRankAlgorithm::RADIX_RANK_BASIC, BlockThreads>();
   Test<cub::RadixRankAlgorithm::RADIX_RANK_MEMOIZE, BlockThreads>();
 
+#if USE_GPU_FUSION_PTX
   Test<BlockThreads>(cub::Int2Type<(BlockThreads % 32) == 0>{});
+#else
+  Test<BlockThreads>(cub::Int2Type<(BlockThreads % 64) == 0>{});
+#endif
 }
 
 int main(int argc, char **argv)

@@ -8,7 +8,11 @@ void verify_stream()
 {
   auto exec = thrust::device;
   auto stream = thrust::cuda_cub::stream(exec);
+#ifdef USE_GPU_FUSION_THRUST
   ASSERT_EQUAL(stream, cudaStreamLegacy);
+#else  //USE_GPU_FUSION_THRUST
+  ASSERT_EQUAL(stream, static_cast<cudaStream_t>(cudaStreamLegacy));
+#endif //USE_GPU_FUSION_THRUST  
 }
 
 void TestLegacyDefaultStream()

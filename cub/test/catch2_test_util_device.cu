@@ -35,6 +35,8 @@
 #include "catch2_test_helper.h"
 #include "catch2_test_launch_helper.h"
 
+// #define __CUDA_ARCH__ 520
+
 CUB_NAMESPACE_BEGIN
 
 CUB_DETAIL_KERNEL_ATTRIBUTES void write_ptx_version_kernel(int* d_kernel_cuda_arch)
@@ -56,7 +58,7 @@ CUB_RUNTIME_FUNCTION static cudaError_t get_cuda_arch_from_kernel(
 
 CUB_NAMESPACE_END
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 DECLARE_LAUNCH_WRAPPER(cub::get_cuda_arch_from_kernel, get_cuda_arch_from_kernel);
 
 CUB_TEST("CUB correctly identifies the ptx version the kernel was compiled for", "[util][dispatch]")

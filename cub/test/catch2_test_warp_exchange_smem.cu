@@ -36,7 +36,8 @@ using inout_types = c2h::type_list<c2h::pair<std::uint16_t, std::int64_t>,
                                    c2h::pair<uchar3, uchar3>,
                                    c2h::pair<ulonglong4, ulonglong4>>;
 
-using logical_warp_threads = c2h::enum_type_list<int, 4, 16, 32>;
+// using logical_warp_threads = c2h::enum_type_list<int, 4, 16, 32>;
+using logical_warp_threads = c2h::enum_type_list<int, 4, 16, 32, 64>;
 using items_per_thread     = c2h::enum_type_list<int, 1, 4, 7>;
 
 template <class TestType>

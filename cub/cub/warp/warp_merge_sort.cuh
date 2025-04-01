@@ -146,7 +146,11 @@ private:
     BlockMergeSortStrategy<KeyT, ValueT, LOGICAL_WARP_THREADS, ITEMS_PER_THREAD, WarpMergeSort>;
 
   const unsigned int warp_id;
-  const unsigned int member_mask;
+#ifdef USE_GPU_FUSION_PTX
+    unsigned int member_mask;
+#else //USE_GPU_FUSION_PTX
+    unsigned long long member_mask;
+#endif  //USE_GPU_FUSION_PTX
 
 public:
   WarpMergeSort() = delete;
@@ -158,8 +162,11 @@ public:
       , warp_id(IS_ARCH_WARP ? 0 : (LaneId() / LOGICAL_WARP_THREADS))
       , member_mask(WarpMask<LOGICAL_WARP_THREADS>(warp_id))
   {}
-
+#ifdef USE_GPU_FUSION_PTX
   _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int get_member_mask() const { return member_mask; }
+#else
+ _CCCL_DEVICE _CCCL_FORCEINLINE unsigned long long get_member_mask() const { return member_mask; }
+#endif
 
 private:
   _CCCL_DEVICE _CCCL_FORCEINLINE void SyncImplementation() const { WARP_SYNC(member_mask); }

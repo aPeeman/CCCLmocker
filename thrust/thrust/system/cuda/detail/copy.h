@@ -118,6 +118,8 @@ namespace cuda_cub {
 #if THRUST_DEVICE_COMPILER == THRUST_DEVICE_COMPILER_NVCC
 // D->D copy requires NVCC compiler
 
+#if USE_GPU_FUSION_THRUST
+
 _CCCL_EXEC_CHECK_DISABLE
 template <class System,
           class InputIterator,
@@ -135,6 +137,66 @@ copy(execution_policy<System> &system,
   return result;
 }    // end copy()
 
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class System,
+          class InputIterator,
+          class OutputIterator>
+OutputIterator _CCCL_HOST_DEVICE
+copy(execution_policy<System> &system,
+     InputIterator             first,
+     InputIterator             last,
+     OutputIterator            result)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (result = __copy::device_to_device(system, first, last, result);),
+     // CDP sequential impl:
+    (result =
+       thrust::copy(cvt_to_seq(derived_cast(system)), first, last, result);    ));
+  return result;
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static OutputIterator par(execution_policy<System> &system,
+     InputIterator             first,
+     InputIterator             last,
+     OutputIterator            result)
+    {
+      return __copy::device_to_device(system, first, last, result);
+    }
+    __device__
+    static OutputIterator par(execution_policy<System> &system,
+     InputIterator             first,
+     InputIterator             last,
+     OutputIterator            result)
+    {
+      return
+       thrust::copy(cvt_to_seq(derived_cast(system)), first, last, result);
+    }
+    __device__
+    static OutputIterator seq(execution_policy<System> &system,
+     InputIterator             first,
+     InputIterator             last,
+     OutputIterator            result) 
+    {
+      return
+       thrust::copy(cvt_to_seq(derived_cast(system)), first, last, result);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(system, first, last, result);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(system, first, last, result);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}    // end copy()
+#endif //USE_GPU_FUSION_THRUST
+
+
+
+#if USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <class System,
           class InputIterator,
@@ -155,6 +217,70 @@ copy_n(execution_policy<System> &system,
        thrust::copy_n(cvt_to_seq(derived_cast(system)), first, n, result);));
   return result;
 } // end copy_n()
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <class System,
+          class InputIterator,
+          class Size,
+          class OutputIterator>
+OutputIterator _CCCL_HOST_DEVICE
+copy_n(execution_policy<System> &system,
+       InputIterator             first,
+       Size                      n,
+       OutputIterator            result)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (result = __copy::device_to_device(system,
+                                       first,
+                                       thrust::next(first, n),
+                                       result);),
+     // CDP sequential impl:
+    (result =
+       thrust::copy_n(cvt_to_seq(derived_cast(system)), first, n, result);    ));
+  return result;
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static OutputIterator par(execution_policy<System> &system,
+       InputIterator             first,
+       Size                      n,
+       OutputIterator            result)
+    {
+      return __copy::device_to_device(system,
+                                       first,
+                                       thrust::next(first, n),
+                                       result);
+    }
+    __device__
+    static OutputIterator par(execution_policy<System> &system,
+       InputIterator             first,
+       Size                      n,
+       OutputIterator            result)
+    {
+      return
+       thrust::copy_n(cvt_to_seq(derived_cast(system)), first, n, result);
+    }
+    __device__
+    static OutputIterator seq(execution_policy<System> &system,
+       InputIterator             first,
+       Size                      n,
+       OutputIterator            result) 
+    {
+      return
+       thrust::copy_n(cvt_to_seq(derived_cast(system)), first, n, result);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(system, first, n, result);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(system, first, n, result);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+} // end copy_n()
+
+#endif //USE_GPU_FUSION_THRUST
 #endif
 
 template <class System1,

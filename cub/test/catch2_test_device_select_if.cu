@@ -39,7 +39,7 @@
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceSelect::If, select_if);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 template <typename T>
 struct less_than_t

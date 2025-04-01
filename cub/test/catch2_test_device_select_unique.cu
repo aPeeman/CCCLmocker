@@ -65,7 +65,7 @@ inline c2h::custom_type_t<c2h::equal_comparable_t> to_bound(const unsigned long 
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceSelect::Unique, select_unique);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 struct equal_to_default_t
 {

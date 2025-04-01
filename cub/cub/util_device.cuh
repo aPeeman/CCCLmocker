@@ -514,12 +514,23 @@ CUB_RUNTIME_FUNCTION inline cudaError_t PtxVersionUncached(int& ptx_version)
     NV_IF_TARGET(
       NV_IS_HOST,
       (
+        // typedef void (*EmptyKernelPtr)();
+        // EmptyKernelPtr empty_kernel = EmptyKernel<void>;
+        // EmptyKernelPtr empty_kernel = 0;
+
+        // (void)reinterpret_cast<void*>(empty_kernel);
+
         cudaFuncAttributes empty_kernel_attrs;
+        empty_kernel = EmptyKernel<void>;
 
-        result = CubDebug(cudaFuncGetAttributes(&empty_kernel_attrs,
-                                                reinterpret_cast<void*>(empty_kernel)));
-
-        ptx_version = empty_kernel_attrs.ptxVersion * 10;
+        // result = CubDebug(cudaFuncGetAttributes(&empty_kernel_attrs,
+        //                                         reinterpret_cast<void*>(empty_kernel)));
+        ptx_version = 52 * 10;
+// #ifdef USE_GPU_FUSION_DEFAULT_POLICY
+//         ptx_version = empty_kernel_attrs.ptxVersion * 10;
+// #else //USE_GPU_FUSION_DEFAULT_POLICY
+//         ptx_version = 520;
+// #endif //USE_GPU_FUSION_DEFAULT_POLICY
       ),
       // NV_IS_DEVICE
       (

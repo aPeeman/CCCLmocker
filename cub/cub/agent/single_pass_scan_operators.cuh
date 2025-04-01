@@ -653,7 +653,7 @@ struct ScanTileState<T, true>
           tile_descriptor = reinterpret_cast<TileDescriptor&>(alias);
         }
 
-        while (WARP_ANY((tile_descriptor.status == SCAN_TILE_INVALID), 0xffffffff))
+        while (WARP_ANY((tile_descriptor.status == SCAN_TILE_INVALID), 0xffffffffffffffffull))
         {
           delay_or_prevent_hoisting();
           TxnWord alias = detail::load_relaxed(d_tile_descriptors + TILE_STATUS_PADDING + tile_idx);
@@ -847,7 +847,7 @@ struct ScanTileState<T, false>
           delay();
           status = detail::load_relaxed(d_tile_status + TILE_STATUS_PADDING + tile_idx);
           __threadfence();
-        } while (WARP_ANY((status == SCAN_TILE_INVALID), 0xffffffff));
+        } while (WARP_ANY((status == SCAN_TILE_INVALID), 0xffffffffffffffff));
 
         if (status == StatusWord(SCAN_TILE_PARTIAL))
         {
@@ -1101,7 +1101,7 @@ struct ReduceByKeyScanTileState<ValueT, KeyT, true>
           TxnWord alias = detail::load_relaxed(d_tile_descriptors + TILE_STATUS_PADDING + tile_idx);
           tile_descriptor = reinterpret_cast<TileDescriptor&>(alias);
 
-        } while (WARP_ANY((tile_descriptor.status == SCAN_TILE_INVALID), 0xffffffff));
+        } while (WARP_ANY((tile_descriptor.status == SCAN_TILE_INVALID), 0xffffffffffffffffull));
 
         status      = tile_descriptor.status;
         value.value = tile_descriptor.value;
@@ -1236,7 +1236,7 @@ struct TilePrefixCallbackOp
         exclusive_prefix = window_aggregate;
 
         // Keep sliding the window back until we come across a tile whose inclusive prefix is known
-        while (WARP_ALL((predecessor_status != StatusWord(SCAN_TILE_INCLUSIVE)), 0xffffffff))
+        while (WARP_ALL((predecessor_status != StatusWord(SCAN_TILE_INCLUSIVE)), 0xffffffffffffffffull))
         {
             predecessor_idx -= CUB_PTX_WARP_THREADS;
 

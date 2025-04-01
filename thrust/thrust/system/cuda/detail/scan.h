@@ -216,6 +216,8 @@ OutputIt exclusive_scan_n_impl(thrust::cuda_cub::execution_policy<Derived> &poli
 // Thrust API entry points
 //-------------------------
 
+#ifdef USE_GPU_FUSION_THRUST
+
 _CCCL_EXEC_CHECK_DISABLE
 template <typename Derived,
           typename InputIt,
@@ -242,6 +244,85 @@ OutputIt inclusive_scan_n(thrust::cuda_cub::execution_policy<Derived> &policy,
                                      scan_op);));
   return result;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <typename Derived,
+          typename InputIt,
+          typename Size,
+          typename OutputIt,
+          typename ScanOp>
+_CCCL_HOST_DEVICE
+OutputIt inclusive_scan_n(thrust::cuda_cub::execution_policy<Derived> &policy,
+                          InputIt first,
+                          Size num_items,
+                          OutputIt result,
+                          ScanOp scan_op)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (result = thrust::cuda_cub::detail::inclusive_scan_n_impl(policy,
+                                                              first,
+                                                              num_items,
+                                                              result,
+                                                              scan_op);),
+     // CDP sequential impl:
+    (result = thrust::inclusive_scan(cvt_to_seq(derived_cast(policy)),
+                                     first,
+                                     first + num_items,
+                                     result,
+                                     scan_op);    ));
+  return result;                                     
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static OutputIt par(thrust::cuda_cub::execution_policy<Derived> &policy,
+                          InputIt first,
+                          Size num_items,
+                          OutputIt result,
+                          ScanOp scan_op)
+    {
+			return thrust::cuda_cub::detail::inclusive_scan_n_impl(policy,
+                                                              first,
+                                                              num_items,
+                                                              result,
+                                                              scan_op);
+    }
+    __device__
+    static OutputIt par(thrust::cuda_cub::execution_policy<Derived> &policy,
+                          InputIt first,
+                          Size num_items,
+                          OutputIt result,
+                          ScanOp scan_op)
+    {
+		  return thrust::inclusive_scan(cvt_to_seq(derived_cast(policy)),
+                                     first,
+                                     first + num_items,
+                                     result,
+                                     scan_op);
+    }
+    __device__
+    static OutputIt seq(thrust::cuda_cub::execution_policy<Derived> &policy,
+                          InputIt first,
+                          Size num_items,
+                          OutputIt result,
+                          ScanOp scan_op) 
+    {
+			return thrust::inclusive_scan(cvt_to_seq(derived_cast(policy)),
+                                     first,
+                                     first + num_items,
+                                     result,
+                                     scan_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, num_items, result, scan_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, num_items, result, scan_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 template <typename Derived, typename InputIt, typename OutputIt, typename ScanOp>
 _CCCL_HOST_DEVICE
@@ -274,6 +355,7 @@ OutputIt inclusive_scan(thrust::cuda_cub::execution_policy<Derived> &policy,
                                           thrust::plus<>{});
 }
 
+#ifdef USE_GPU_FUSION_THRUST
 _CCCL_EXEC_CHECK_DISABLE
 template <typename Derived,
           typename InputIt,
@@ -304,6 +386,95 @@ OutputIt exclusive_scan_n(thrust::cuda_cub::execution_policy<Derived> &policy,
                                      scan_op);));
   return result;
 }
+#else //USE_GPU_FUSION_THRUST
+_CCCL_EXEC_CHECK_DISABLE
+template <typename Derived,
+          typename InputIt,
+          typename Size,
+          typename OutputIt,
+          typename T,
+          typename ScanOp>
+_CCCL_HOST_DEVICE
+OutputIt exclusive_scan_n(thrust::cuda_cub::execution_policy<Derived> &policy,
+                          InputIt first,
+                          Size num_items,
+                          OutputIt result,
+                          T init,
+                          ScanOp scan_op)
+{
+#if USE_GPU_WORKAROUND
+  NV_IF_TARGET(NV_IS_HOST,
+    (result = thrust::cuda_cub::detail::exclusive_scan_n_impl(policy,
+                                                              first,
+                                                              num_items,
+                                                              result,
+                                                              init,
+                                                              scan_op);),
+     // CDP sequential impl:
+    (result = thrust::exclusive_scan(cvt_to_seq(derived_cast(policy)),
+                                     first,
+                                     first + num_items,
+                                     result,
+                                     init,
+                                     scan_op);    ));
+  return result;                                     
+#else  //USE_GPU_WORKAROUND
+  struct workaround
+  {
+    __host__
+    static OutputIt par(thrust::cuda_cub::execution_policy<Derived> &policy,
+                          InputIt first,
+                          Size num_items,
+                          OutputIt result,
+                          T init,
+                          ScanOp scan_op)
+    {
+			return thrust::cuda_cub::detail::exclusive_scan_n_impl(policy,
+                                                              first,
+                                                              num_items,
+                                                              result,
+                                                              init,
+                                                              scan_op);
+    }
+    __device__
+    static OutputIt par(thrust::cuda_cub::execution_policy<Derived> &policy,
+                          InputIt first,
+                          Size num_items,
+                          OutputIt result,
+                          T init,
+                          ScanOp scan_op)
+    {
+		  return thrust::exclusive_scan(cvt_to_seq(derived_cast(policy)),
+                                     first,
+                                     first + num_items,
+                                     result,
+                                     init,
+                                     scan_op);
+    }
+    __device__
+    static OutputIt seq(thrust::cuda_cub::execution_policy<Derived> &policy,
+                          InputIt first,
+                          Size num_items,
+                          OutputIt result,
+                          T init,
+                          ScanOp scan_op) 
+    {
+			return thrust::exclusive_scan(cvt_to_seq(derived_cast(policy)),
+                                     first,
+                                     first + num_items,
+                                     result,
+                                     init,
+                                     scan_op);
+    }
+  };
+  #ifdef THRUST_RDC_ENABLED
+    workaround::par(policy, first, num_items, result, init, scan_op);
+  #else  //THRUST_RDC_ENABLED
+    workaround::seq(policy, first, num_items, result, init, scan_op);
+  #endif  //THRUST_RDC_ENABLED
+  #endif   //USE_GPU_WORKAROUND
+}
+#endif //USE_GPU_FUSION_THRUST
 
 template <typename Derived,
           typename InputIt,

@@ -463,7 +463,7 @@ __launch_bounds__(int(ChainedPolicyT::ActivePolicy::SingleTilePolicy::BLOCK_THRE
     {
         // Register pressure work-around: moving num_items through shfl prevents compiler
         // from reusing guards/addressing from prior guarded loads
-        num_items = ShuffleIndex<CUB_PTX_WARP_THREADS>(num_items, 0, 0xffffffff);
+        num_items = ShuffleIndex<CUB_PTX_WARP_THREADS>(num_items, 0, 0xffffffffffffffffull);
 
         BlockLoadValues(temp_storage.load_values).Load(d_values_in, values, num_items);
 
@@ -924,7 +924,11 @@ struct DeviceRadixSortPolicy
             ONESWEEP_RADIX_BITS> OnesweepPolicy;
 
         // Scan policy
+#ifdef USE_GPU_FUSION_PTX
         typedef AgentScanPolicy <1024, 4, OffsetT, BLOCK_LOAD_VECTORIZE, LOAD_DEFAULT, BLOCK_STORE_VECTORIZE, BLOCK_SCAN_WARP_SCANS> ScanPolicy;
+#else //USE_GPU_FUSION_PTX
+        typedef AgentScanPolicy <256, 4, OffsetT, BLOCK_LOAD_VECTORIZE, LOAD_DEFAULT, BLOCK_STORE_VECTORIZE, BLOCK_SCAN_WARP_SCANS> ScanPolicy;
+#endif //USE_GPU_FUSION_PTX
 
         // Keys-only downsweep policies
         typedef AgentRadixSortDownsweepPolicy <128, 9, DominantT, BLOCK_LOAD_WARP_TRANSPOSE, LOAD_LDG, RADIX_RANK_MATCH, BLOCK_SCAN_WARP_SCANS, PRIMARY_RADIX_BITS> DownsweepPolicyKeys;
@@ -959,6 +963,7 @@ struct DeviceRadixSortPolicy
 
     /// SM50
     struct Policy500 : ChainedPolicy<500, Policy500, Policy350>
+
     {
         enum {
             PRIMARY_RADIX_BITS      = (sizeof(KeyT) > 1) ? 7 : 5,    // 3.5B 32b keys/s, 1.92B 32b pairs/s (TitanX)
@@ -1329,8 +1334,11 @@ struct DeviceRadixSortPolicy
                                                                  SEGMENTED_RADIX_BITS - 1>;
     };
 
-
+#ifdef USE_GPU_FUSION_PTX
     using MaxPolicy = Policy900;
+#else //USE_GPU_FUSION_PTX    
+    using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
 };
 
 

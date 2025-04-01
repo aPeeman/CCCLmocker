@@ -167,7 +167,11 @@ struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_1, val_size::_4, 
 template <class KeyT, class ValueT>
 struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_1, val_size::_8, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 10;
 
@@ -253,7 +257,11 @@ struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_2, val_size::_4, 
 template <class KeyT, class ValueT>
 struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_2, val_size::_8, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 10;
 
@@ -325,7 +333,11 @@ struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_4, val_size::_2, 
 template <class KeyT, class ValueT>
 struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_4, val_size::_4, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 288;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 14;
 
@@ -339,7 +351,11 @@ struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_4, val_size::_4, 
 template <class KeyT, class ValueT>
 struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_4, val_size::_8, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 14;
 
@@ -397,7 +413,11 @@ struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_8, val_size::_1, 
 template <class KeyT, class ValueT>
 struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_8, val_size::_2, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 10;
 
@@ -425,7 +445,11 @@ struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_8, val_size::_4, 
 template <class KeyT, class ValueT>
 struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_8, val_size::_8, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 11;
 
@@ -483,7 +507,11 @@ struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_16, val_size::_1,
 template <class KeyT, class ValueT>
 struct sm90_tuning<KeyT, ValueT, primitive_op::yes, key_size::_16, val_size::_2, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 10;
 
@@ -597,7 +625,11 @@ struct sm80_tuning<KeyT, ValueT, primitive_op::yes, key_size::_1, val_size::_1, 
 template <class KeyT, class ValueT>
 struct sm80_tuning<KeyT, ValueT, primitive_op::yes, key_size::_1, val_size::_2, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 288;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 12;
 
@@ -711,7 +743,11 @@ struct sm80_tuning<KeyT, ValueT, primitive_op::yes, key_size::_2, val_size::_4, 
 template <class KeyT, class ValueT>
 struct sm80_tuning<KeyT, ValueT, primitive_op::yes, key_size::_2, val_size::_8, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 160;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 17;
 
@@ -726,7 +762,11 @@ struct sm80_tuning<KeyT, ValueT, primitive_op::yes, key_size::_2, val_size::_8, 
 template <class KeyT>
 struct sm80_tuning<KeyT, __int128_t, primitive_op::yes, key_size::_2, val_size::_16, primitive_accum::no>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 160;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 14;
 
@@ -740,7 +780,11 @@ struct sm80_tuning<KeyT, __int128_t, primitive_op::yes, key_size::_2, val_size::
 template <class KeyT>
 struct sm80_tuning<KeyT, __uint128_t, primitive_op::yes, key_size::_2, val_size::_16, primitive_accum::no>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 160;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 14;
 
@@ -869,7 +913,11 @@ struct sm80_tuning<KeyT, ValueT, primitive_op::yes, key_size::_8, val_size::_2, 
 template <class KeyT, class ValueT>
 struct sm80_tuning<KeyT, ValueT, primitive_op::yes, key_size::_8, val_size::_4, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 13;
 
@@ -883,7 +931,11 @@ struct sm80_tuning<KeyT, ValueT, primitive_op::yes, key_size::_8, val_size::_4, 
 template <class KeyT, class ValueT>
 struct sm80_tuning<KeyT, ValueT, primitive_op::yes, key_size::_8, val_size::_8, primitive_accum::yes>
 {
+#ifdef USE_GPU_FUSION_PTX
   static constexpr int threads = 224;
+#else
+  static constexpr int threads = 256;
+#endif
 
   static constexpr int items = 10;
 
@@ -1107,7 +1159,11 @@ struct DeviceScanByKeyPolicy
                                                   typename tuning::delay_constructor>;
   };
 
+#ifdef USE_GPU_FUSION_PTX
   using MaxPolicy = Policy900;
+#else //USE_GPU_FUSION_PTX
+  using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
 };
 
 

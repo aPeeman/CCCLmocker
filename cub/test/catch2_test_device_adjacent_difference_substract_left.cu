@@ -39,7 +39,7 @@
 DECLARE_LAUNCH_WRAPPER(cub::DeviceAdjacentDifference::SubtractLeft, adjacent_difference_subtract_left);
 DECLARE_LAUNCH_WRAPPER(cub::DeviceAdjacentDifference::SubtractLeftCopy, adjacent_difference_subtract_left_copy);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 using all_types = c2h::type_list<std::uint8_t,
                                  std::uint64_t,

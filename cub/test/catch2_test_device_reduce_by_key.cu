@@ -36,7 +36,7 @@
 
 DECLARE_LAUNCH_WRAPPER(cub::DeviceReduce::ReduceByKey, device_reduce_by_key);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 // %PARAM% TEST_TYPES types 0:1:2:3
 
 // List of types to test

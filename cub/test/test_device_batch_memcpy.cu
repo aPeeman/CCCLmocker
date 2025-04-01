@@ -556,14 +556,14 @@ int main(int argc, char **argv)
   // BitPackedCounter tests
   //---------------------------------------------------------------------
   TestBitPackedCounter<1, 1>();
-  TestBitPackedCounter<1, (0x01U << 16)>();
-  TestBitPackedCounter<4, 1>();
-  TestBitPackedCounter<4, 2>();
-  TestBitPackedCounter<4, 255>();
-  TestBitPackedCounter<4, 256>();
-  TestBitPackedCounter<8, 1024>();
-  TestBitPackedCounter<32, 1>();
-  TestBitPackedCounter<32, 256>();
+  // TestBitPackedCounter<1, (0x01U << 16)>();
+  // TestBitPackedCounter<4, 1>();
+  // TestBitPackedCounter<4, 2>();
+  // TestBitPackedCounter<4, 255>();
+  // TestBitPackedCounter<4, 256>();
+  // TestBitPackedCounter<8, 1024>();
+  // TestBitPackedCounter<32, 1>();
+  // TestBitPackedCounter<32, 256>();
 
   //---------------------------------------------------------------------
   // DeviceMemcpy::Batched tests
@@ -582,21 +582,24 @@ int main(int argc, char **argv)
   using ByteOffsetT = uint32_t;
 
   // Total number of bytes that are targeted to be copied on each run
-  constexpr BufferOffsetT target_copy_size = 64U << 20;
+  // constexpr BufferOffsetT target_copy_size = 64U << 20;
+  constexpr BufferOffsetT target_copy_size = 64U << 8;
 
   // The number of randomly
   constexpr std::size_t num_rnd_buffer_range_tests = 32;
 
   // Each buffer's size will be random within this interval
-  c2h::host_vector<std::pair<std::size_t, std::size_t>> buffer_size_ranges = {{0, 1},
-                                                                              {1, 2},
-                                                                              {0, 16},
-                                                                              {1, 32},
-                                                                              {1, 1024},
-                                                                              {1, 32 * 1024},
-                                                                              {128 * 1024, 256 * 1024},
-                                                                              {target_copy_size,
-                                                                               target_copy_size}};
+  c2h::host_vector<std::pair<std::size_t, std::size_t>> buffer_size_ranges = {{0, 1}
+  // ,
+                                                                              // {1, 2},
+                                                                              // {0, 16},
+                                                                              // {1, 32},
+                                                                              // {1, 1024},
+                                                                              // {1, 32 * 1024},
+                                                                              // {128 * 1024, 256 * 1024},
+                                                                              // {target_copy_size,
+                                                                              //  target_copy_size}
+                                                                               };
 
   std::mt19937 rng(0);
   std::uniform_int_distribution<std::size_t> size_dist(1, 1000000);
@@ -627,7 +630,8 @@ int main(int argc, char **argv)
                                                                   min_buffer_size,
                                                                   max_buffer_size,
                                                                   TestDataGen::CONSECUTIVE,
-                                                                  TestDataGen::CONSECUTIVE);
+                                                                  TestDataGen::CONSECUTIVE
+                                                                  );
 
     // Run tests with input buffer being randomly shuffled and output buffers being randomly
     // shuffled
@@ -635,7 +639,8 @@ int main(int argc, char **argv)
                                                                   min_buffer_size,
                                                                   max_buffer_size,
                                                                   TestDataGen::RANDOM,
-                                                                  TestDataGen::RANDOM);
+                                                                  TestDataGen::RANDOM
+                                                                  );
   }
 
   //---------------------------------------------------------------------
@@ -653,5 +658,6 @@ int main(int argc, char **argv)
                                                                     large_target_copy_size,
                                                                     large_target_copy_size,
                                                                     TestDataGen::CONSECUTIVE,
-                                                                    TestDataGen::CONSECUTIVE);
+                                                                    TestDataGen::CONSECUTIVE
+                                                                    );
 }

@@ -733,7 +733,9 @@ public:
     {
       ScaleT result;
       result.fraction.bins  = static_cast<T>(num_levels - 1);
+
       result.fraction.range = static_cast<T>(max_level - min_level);
+
       return result;
     }
 

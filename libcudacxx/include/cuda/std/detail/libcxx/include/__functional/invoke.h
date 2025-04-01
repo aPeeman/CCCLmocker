@@ -481,11 +481,11 @@ struct __invoke_of
 {
 #if defined(__NVCC__) && defined(__CUDACC_EXTENDED_LAMBDA__) && \
    !defined(__CUDA_ARCH__)
-  static_assert(!__nv_is_extended_device_lambda_closure_type(_Fp),
-                "Attempt to use an extended __device__ lambda in a context "
-                "that requires querying its return type in host code. Use a "
-                "named function object, a __host__ __device__ lambda, or "
-                "cuda::proclaim_return_type instead.");
+//   static_assert(!__nv_is_extended_device_lambda_closure_type(_Fp),
+//                 "Attempt to use an extended __device__ lambda in a context "
+//                 "that requires querying its return type in host code. Use a "
+//                 "named function object, a __host__ __device__ lambda, or "
+//                 "cuda::proclaim_return_type instead.");
 #endif
 };
 

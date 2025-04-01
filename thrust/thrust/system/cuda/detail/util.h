@@ -59,7 +59,8 @@ default_stream()
 #ifdef CUDA_API_PER_THREAD_DEFAULT_STREAM
   return cudaStreamPerThread;
 #else
-  return cudaStreamLegacy;
+  // return cudaStreamLegacy;
+  return cudaStreamDefault;
 #endif
 }
 
@@ -207,11 +208,19 @@ trivial_copy_device_to_device(Policy &    policy,
   return status;
 }
 
+#if USE_GPU_FUSION_PTX
 inline void _CCCL_HOST_DEVICE
 terminate()
 {
   NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (asm("trap;");));
 }
+#else //USE_GPU_FUSION_PTX
+inline void _CCCL_HOST_DEVICE
+terminate()
+{
+  NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();));
+}
+#endif //USE_GPU_FUSION_PTX
 
 _CCCL_HOST_DEVICE
 inline void throw_on_error(cudaError_t status)

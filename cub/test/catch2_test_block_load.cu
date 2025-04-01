@@ -157,8 +157,13 @@ void block_load(
 using types = c2h::type_list<std::uint8_t, std::int32_t, std::int64_t>;
 using vec_types = c2h::type_list<long2, double2>;
 
+#ifdef USE_GPU_FUSION_PTX
 using even_threads_in_block = c2h::enum_type_list<int, 32, 128>;
 using odd_threads_in_block = c2h::enum_type_list<int, 15, 65>;
+#else
+using even_threads_in_block = c2h::enum_type_list<int, 64, 128>;
+using odd_threads_in_block = c2h::enum_type_list<int, 15, 65>;
+#endif
 using a_block_size = c2h::enum_type_list<int, 256>;
 
 using items_per_thread = c2h::enum_type_list<int, IPT>;

@@ -145,6 +145,7 @@ template <typename ChainedPolicyT,
           typename CompareOpT,
           typename KeyT,
           typename ValueT>
+#ifdef USE_GPU_FUSION_PTX
 __launch_bounds__(
   cub::detail::merge_sort_vsmem_helper_t<
     typename ChainedPolicyT::ActivePolicy::MergeSortPolicy,
@@ -156,6 +157,19 @@ __launch_bounds__(
     CompareOpT,
     KeyT,
     ValueT>::policy_t::BLOCK_THREADS)
+#else
+// __launch_bounds__(512)
+__launch_bounds__(int( cub::detail::merge_sort_vsmem_helper_t<
+    typename ChainedPolicyT::ActivePolicy::MergeSortPolicy,
+    KeyInputIteratorT,
+    ValueInputIteratorT,
+    KeyIteratorT,
+    ValueIteratorT,
+    OffsetT,
+    CompareOpT,
+    KeyT,
+    ValueT>::policy_t::BLOCK_THREADS))
+#endif
   CUB_DETAIL_KERNEL_ATTRIBUTES void DeviceMergeSortBlockSortKernel(
     bool ping,
     KeyInputIteratorT keys_in,
@@ -250,6 +264,7 @@ template <typename ChainedPolicyT,
           typename CompareOpT,
           typename KeyT,
           typename ValueT>
+#ifdef USE_GPU_FUSION_PTX
 __launch_bounds__(
   cub::detail::merge_sort_vsmem_helper_t<
     typename ChainedPolicyT::ActivePolicy::MergeSortPolicy,
@@ -261,6 +276,19 @@ __launch_bounds__(
     CompareOpT,
     KeyT,
     ValueT>::policy_t::BLOCK_THREADS)
+#else
+// __launch_bounds__(512)
+__launch_bounds__(int( cub::detail::merge_sort_vsmem_helper_t<
+    typename ChainedPolicyT::ActivePolicy::MergeSortPolicy,
+    KeyInputIteratorT,
+    ValueInputIteratorT,
+    KeyIteratorT,
+    ValueIteratorT,
+    OffsetT,
+    CompareOpT,
+    KeyT,
+    ValueT>::policy_t::BLOCK_THREADS))
+#endif
   CUB_DETAIL_KERNEL_ATTRIBUTES void DeviceMergeSortMergeKernel(
     bool ping,
     KeyIteratorT keys_ping,
@@ -345,7 +373,10 @@ struct DeviceMergeSortPolicy
 #if defined(_NVHPC_CUDA)
   using Policy520 = Policy350;
 #else
+
+#ifdef USE_GPU_FUSION_PTX
   struct Policy520 : ChainedPolicy<520, Policy520, Policy350>
+
   {
     using MergeSortPolicy =
       AgentMergeSortPolicy<512,
@@ -354,6 +385,18 @@ struct DeviceMergeSortPolicy
                            cub::LOAD_LDG,
                            cub::BLOCK_STORE_WARP_TRANSPOSE>;
   };
+#else //USE_GPU_FUSION_PTX
+  struct Policy520 : ChainedPolicy<520, Policy520, Policy350>
+
+  {
+    using MergeSortPolicy =
+      AgentMergeSortPolicy<256,
+                           Nominal4BItemsToItems<KeyT>(11),
+                           cub::BLOCK_LOAD_WARP_TRANSPOSE,
+                           cub::LOAD_LDG,
+                           cub::BLOCK_STORE_WARP_TRANSPOSE>;
+  };
+#endif  //USE_GPU_FUSION_PTX
 #endif
 
   struct Policy600 : ChainedPolicy<600, Policy600, Policy520>
@@ -366,8 +409,13 @@ struct DeviceMergeSortPolicy
                            cub::BLOCK_STORE_WARP_TRANSPOSE>;
   };
 
+#ifdef USE_GPU_FUSION_PTX
   /// MaxPolicy
   using MaxPolicy = Policy600;
+#else //USE_GPU_FUSION_PTX
+  using MaxPolicy = Policy350;
+#endif //USE_GPU_FUSION_PTX
+
 };
 
 template <typename KeyInputIteratorT,

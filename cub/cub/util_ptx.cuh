@@ -50,6 +50,8 @@
 
 CUB_NAMESPACE_BEGIN
 
+#define CUDAX_PTX_CHECKIN
+
 /******************************************************************************
  * PTX helper macros
  ******************************************************************************/
@@ -86,9 +88,15 @@ namespace detail
  */
 _CCCL_DEVICE _CCCL_FORCEINLINE uint32_t LogicShiftLeft(uint32_t val, uint32_t num_bits)
 {
+#ifdef USE_GPU_FUSION_PTX
   uint32_t ret{};
   asm("shl.b32 %0, %1, %2;" : "=r"(ret) : "r"(val), "r"(num_bits));
   return ret;
+#else
+  num_bits = std::min(num_bits, static_cast<uint32_t>(32));
+  return val << num_bits;
+#endif
+
 }
 
 /**
@@ -97,9 +105,15 @@ _CCCL_DEVICE _CCCL_FORCEINLINE uint32_t LogicShiftLeft(uint32_t val, uint32_t nu
  */
 _CCCL_DEVICE _CCCL_FORCEINLINE uint32_t LogicShiftRight(uint32_t val, uint32_t num_bits)
 {
+#ifdef USE_GPU_FUSION_PTX
   uint32_t ret{};
   asm("shr.b32 %0, %1, %2;" : "=r"(ret) : "r"(val), "r"(num_bits));
   return ret;
+#else
+  num_bits = std::min(num_bits, static_cast<uint32_t>(32));
+  return val >> num_bits;
+#endif
+
 }
 } // namespace detail
 
@@ -112,8 +126,13 @@ _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int SHR_ADD(
     unsigned int addend)
 {
     unsigned int ret;
+#ifdef USE_GPU_FUSION_PTX
     asm ("vshr.u32.u32.u32.clamp.add %0, %1, %2, %3;" :
         "=r"(ret) : "r"(x), "r"(shift), "r"(addend));
+#else
+    ret = x >> shift;
+    ret += addend;
+#endif
     return ret;
 }
 
@@ -127,8 +146,14 @@ _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int SHL_ADD(
     unsigned int addend)
 {
     unsigned int ret;
+#ifdef USE_GPU_FUSION_PTX
     asm ("vshl.u32.u32.u32.clamp.add %0, %1, %2, %3;" :
         "=r"(ret) : "r"(x), "r"(shift), "r"(addend));
+#else
+    // No suitable intrinsic found
+    ret = x << shift;
+    ret += addend;
+#endif
     return ret;
 }
 
@@ -145,7 +170,13 @@ _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int BFE(
     Int2Type<BYTE_LEN>      /*byte_len*/)
 {
     unsigned int bits;
+#ifdef USE_GPU_FUSION_PTX
     asm ("bfe.u32 %0, %1, %2, %3;" : "=r"(bits) : "r"((unsigned int) source), "r"(bit_start), "r"(num_bits));
+#else
+    // No suitable intrinsic found
+    const unsigned int MASK = (1U << num_bits) - 1;
+    bits = (source >> bit_start) & MASK;
+#endif
     return bits;
 }
 
@@ -205,8 +236,13 @@ _CCCL_DEVICE _CCCL_FORCEINLINE void BFI(
     unsigned int bit_start,
     unsigned int num_bits)
 {
+#ifdef USE_GPU_FUSION_PTX
     asm ("bfi.b32 %0, %1, %2, %3, %4;" :
         "=r"(ret) : "r"(y), "r"(x), "r"(bit_start), "r"(num_bits));
+#else
+    const unsigned MASK = ((1U << num_bits) - 1) << bit_start;
+    ret = (x & ~MASK) | ((y << bit_start) & MASK);
+#endif
 }
 
 
@@ -215,7 +251,11 @@ _CCCL_DEVICE _CCCL_FORCEINLINE void BFI(
  */
 _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int IADD3(unsigned int x, unsigned int y, unsigned int z)
 {
+#ifdef USE_GPU_FUSION_PTX
     asm ("vadd.u32.u32.u32.add %0, %1, %2, %3;" : "=r"(x) : "r"(x), "r"(y), "r"(z));
+#else
+     x = x + y + z;
+#endif
     return x;
 }
 
@@ -249,7 +289,11 @@ _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int IADD3(unsigned int x, unsigned int y
 _CCCL_DEVICE _CCCL_FORCEINLINE int PRMT(unsigned int a, unsigned int b, unsigned int index)
 {
     int ret;
+#ifdef USE_GPU_FUSION_PTX
     asm ("prmt.b32 %0, %1, %2, %3;" : "=r"(ret) : "r"(a), "r"(b), "r"(index));
+#else
+    ret = __byte_perm(a, b, index);
+#endif
     return ret;
 }
 
@@ -260,7 +304,11 @@ _CCCL_DEVICE _CCCL_FORCEINLINE int PRMT(unsigned int a, unsigned int b, unsigned
  */
 _CCCL_DEVICE _CCCL_FORCEINLINE void BAR(int count)
 {
+#ifdef USE_GPU_FUSION_PTX
     asm volatile("bar.sync 1, %0;" : : "r"(count));
+#else
+    __syncthreads_count(count);
+#endif
 }
 
 /**
@@ -293,79 +341,146 @@ _CCCL_DEVICE  _CCCL_FORCEINLINE int CTA_SYNC_OR(int p)
 /**
  * Warp barrier
  */
-_CCCL_DEVICE  _CCCL_FORCEINLINE void WARP_SYNC(unsigned int member_mask)
+_CCCL_DEVICE  _CCCL_FORCEINLINE void WARP_SYNC(unsigned long long member_mask)
 {
-    __syncwarp(member_mask);
+#ifdef CUB_USE_COOPERATIVE_GROUPS
+    //__syncwarp(member_mask);
+    __syncwarp();
+#endif
 }
 
 
 /**
  * Warp any
  */
-_CCCL_DEVICE  _CCCL_FORCEINLINE int WARP_ANY(int predicate, unsigned int member_mask)
+_CCCL_DEVICE  _CCCL_FORCEINLINE int WARP_ANY(int predicate, unsigned long long member_mask)
 {
+    return ::__any(predicate);
+#ifdef CUB_USE_COOPERATIVE_GROUPS
     return __any_sync(member_mask, predicate);
+#else
+    return ::__any(predicate);
+#endif
 }
 
 
 /**
  * Warp any
  */
-_CCCL_DEVICE  _CCCL_FORCEINLINE int WARP_ALL(int predicate, unsigned int member_mask)
+_CCCL_DEVICE  _CCCL_FORCEINLINE int WARP_ALL(int predicate, unsigned long long member_mask)
 {
+    return ::__all(predicate);
+#ifdef CUB_USE_COOPERATIVE_GROUPS
     return __all_sync(member_mask, predicate);
+#else
+    return ::__all(predicate);
+#endif
 }
 
 
 /**
  * Warp ballot
  */
-_CCCL_DEVICE  _CCCL_FORCEINLINE int WARP_BALLOT(int predicate, unsigned int member_mask)
-{
-    return __ballot_sync(member_mask, predicate);
-}
+// _CCCL_DEVICE  _CCCL_FORCEINLINE int WARP_BALLOT(int predicate, unsigned int member_mask)
+// {
+// #ifdef CUB_USE_COOPERATIVE_GROUPS
+//     return __ballot_sync(member_mask, predicate);
+// #else
+//     return __ballot(predicate);
+// #endif
+// }
 
+_CCCL_DEVICE  _CCCL_FORCEINLINE uint64_t WARP_BALLOT(int predicate, unsigned long long member_mask)
+{
+    auto&& ret = __ballot64(predicate);
+    return *(uint64_t*)&ret;
+}
 
 /**
  * Warp synchronous shfl_up
  */
+#ifdef USE_GPU_FUSION_PTX
 _CCCL_DEVICE _CCCL_FORCEINLINE
-unsigned int SHFL_UP_SYNC(unsigned int word, int src_offset, int flags, unsigned int member_mask)
+unsigned int SHFL_UP_SYNC(unsigned int word, int src_offset, int flags, unsigned long long member_mask)
 {
+#ifdef CUB_USE_COOPERATIVE_GROUPS
     asm volatile("shfl.sync.up.b32 %0, %1, %2, %3, %4;"
         : "=r"(word) : "r"(word), "r"(src_offset), "r"(flags), "r"(member_mask));
+#else
+    asm volatile("shfl.up.b32 %0, %1, %2, %3;"
+        : "=r"(word) : "r"(word), "r"(src_offset), "r"(flags));
+#endif
     return word;
 }
+#else //USE_GPU_FUSION_PTX
+_CCCL_DEVICE _CCCL_FORCEINLINE
+unsigned int SHFL_UP_SYNC(unsigned int word, int src_offset, int first_thread, int width, unsigned long long member_mask)  
+{
+    return __shfl_up_sync(member_mask, word, src_offset, width);
+}
+#endif //USE_GPU_FUSION_PTX
 
 /**
  * Warp synchronous shfl_down
  */
+#ifdef USE_GPU_FUSION_PTX
 _CCCL_DEVICE _CCCL_FORCEINLINE
-unsigned int SHFL_DOWN_SYNC(unsigned int word, int src_offset, int flags, unsigned int member_mask)
+unsigned int SHFL_DOWN_SYNC(unsigned int word, int src_offset, int flags, unsigned long long member_mask)
 {
+#ifdef CUB_USE_COOPERATIVE_GROUPS
     asm volatile("shfl.sync.down.b32 %0, %1, %2, %3, %4;"
         : "=r"(word) : "r"(word), "r"(src_offset), "r"(flags), "r"(member_mask));
+#else
+    asm volatile("shfl.down.b32 %0, %1, %2, %3;"
+        : "=r"(word) : "r"(word), "r"(src_offset), "r"(flags));
+#endif
     return word;
 }
-
+#else //USE_GPU_FUSION_PTX
+_CCCL_DEVICE _CCCL_FORCEINLINE 
+unsigned int SHFL_DOWN_SYNC(unsigned int word, int src_offset, int last_thread, int width, unsigned long long member_mask)
+{
+    return __shfl_down_sync(member_mask, word, src_offset, width);
+}
+#endif //USE_GPU_FUSION_PTX
 /**
  * Warp synchronous shfl_idx
  */
+#ifdef USE_GPU_FUSION_PTX
 _CCCL_DEVICE _CCCL_FORCEINLINE
-unsigned int SHFL_IDX_SYNC(unsigned int word, int src_lane, int flags, unsigned int member_mask)
+unsigned int SHFL_IDX_SYNC(unsigned int word, int src_lane, int flags, unsigned long long member_mask)
 {
+#ifdef USE_GPU_FUSION_PTX
+#ifdef CUB_USE_COOPERATIVE_GROUPS
     asm volatile("shfl.sync.idx.b32 %0, %1, %2, %3, %4;"
         : "=r"(word) : "r"(word), "r"(src_lane), "r"(flags), "r"(member_mask));
+#else
+    asm volatile("shfl.idx.b32 %0, %1, %2, %3;"
+        : "=r"(word) : "r"(word), "r"(src_lane), "r"(flags));
+#endif
+#else
+    word = __shfl(word, src_lane);
+#endif
     return word;
 }
-
+#else //USE_GPU_FUSION_PTX
+__device__ __forceinline__ 
+unsigned int SHFL_IDX_SYNC(unsigned int word, int src_lane, int width, unsigned long long member_mask)
+{
+    return __shfl_sync(member_mask, word, src_lane, width);
+}
+#endif //USE_GPU_FUSION_PTX
 /**
  * Warp synchronous shfl_idx
  */
 _CCCL_DEVICE _CCCL_FORCEINLINE
-unsigned int SHFL_IDX_SYNC(unsigned int word, int src_lane, unsigned int member_mask)
+unsigned int SHFL_IDX_SYNC(unsigned int word, int src_lane, unsigned long long member_mask)
 {
-    return __shfl_sync(member_mask, word, src_lane);
+#ifdef CUB_USE_COOPERATIVE_GROUPS
+  return __shfl_sync(member_mask, word, src_lane);
+#else
+  return __shfl(word, src_lane);
+#endif
 }
 
 /**
@@ -374,8 +489,12 @@ unsigned int SHFL_IDX_SYNC(unsigned int word, int src_lane, unsigned int member_
 _CCCL_DEVICE _CCCL_FORCEINLINE float FMUL_RZ(float a, float b)
 {
     float d;
+#ifdef USE_GPU_FUSION_PTX
     asm ("mul.rz.f32 %0, %1, %2;" : "=f"(d) : "f"(a), "f"(b));
     return d;
+#else //USE_GPU_FUSION_PTX
+    return __fmul_rz(a, b);
+#endif //USE_GPU_FUSION_PTX
 }
 
 
@@ -385,7 +504,11 @@ _CCCL_DEVICE _CCCL_FORCEINLINE float FMUL_RZ(float a, float b)
 _CCCL_DEVICE _CCCL_FORCEINLINE float FFMA_RZ(float a, float b, float c)
 {
     float d;
+#ifdef USE_GPU_FUSION_PTX
     asm ("fma.rz.f32 %0, %1, %2, %3;" : "=f"(d) : "f"(a), "f"(b), "f"(c));
+#else
+    d = __fma_rz(a, b, c);
+#endif
     return d;
 }
 
@@ -395,7 +518,11 @@ _CCCL_DEVICE _CCCL_FORCEINLINE float FFMA_RZ(float a, float b, float c)
  * \brief Terminates the calling thread
  */
 _CCCL_DEVICE _CCCL_FORCEINLINE void ThreadExit() {
+#ifdef USE_GPU_FUSION_PTX
     asm volatile("exit;");
+#else
+    printf("CUDAX ERROR: unimplemented CUDA C at Func %s\n", __FUNCTION__);
+#endif
 }
 
 
@@ -403,7 +530,11 @@ _CCCL_DEVICE _CCCL_FORCEINLINE void ThreadExit() {
  * \brief  Abort execution and generate an interrupt to the host CPU
  */
 _CCCL_DEVICE _CCCL_FORCEINLINE void ThreadTrap() {
+#ifdef USE_GPU_FUSION_PTX
     asm volatile("trap;");
+#else
+    printf("CUDAX ERROR: unimplemented CUDA C at Func %s\n", __FUNCTION__);
+#endif
 }
 
 
@@ -417,14 +548,17 @@ _CCCL_DEVICE _CCCL_FORCEINLINE int RowMajorTid(int block_dim_x, int block_dim_y,
             threadIdx.x;
 }
 
-
 /**
  * \brief Returns the warp lane ID of the calling thread
  */
 _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneId()
 {
     unsigned int ret;
+#ifdef USE_GPU_FUSION_PTX
     asm ("mov.u32 %0, %%laneid;" : "=r"(ret) );
+#else
+    ret = threadIdx.x % warpSize;
+#endif
     return ret;
 }
 
@@ -435,7 +569,11 @@ _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneId()
 _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int WarpId()
 {
     unsigned int ret;
+#ifdef USE_GPU_FUSION_PTX
     asm ("mov.u32 %0, %%warpid;" : "=r"(ret) );
+#else
+    ret = threadIdx.x / warpSize;
+#endif
     return ret;
 }
 
@@ -453,12 +591,12 @@ _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int WarpId()
  */
 template <int LOGICAL_WARP_THREADS, int LEGACY_PTX_ARCH = 0>
 _CCCL_HOST_DEVICE _CCCL_FORCEINLINE
-unsigned int WarpMask(unsigned int warp_id)
+unsigned long long WarpMask(unsigned int warp_id)
 {
   constexpr bool is_pow_of_two = PowerOfTwo<LOGICAL_WARP_THREADS>::VALUE;
   constexpr bool is_arch_warp  = LOGICAL_WARP_THREADS == CUB_WARP_THREADS(0);
 
-  unsigned int member_mask = 0xFFFFFFFFu >>
+  unsigned long long member_mask = 0xFFFFFFFFFFFFFFFFull >>
                              (CUB_WARP_THREADS(0) - LOGICAL_WARP_THREADS);
 
   CUB_IF_CONSTEXPR(is_pow_of_two && !is_arch_warp)
@@ -473,41 +611,62 @@ unsigned int WarpMask(unsigned int warp_id)
 /**
  * \brief Returns the warp lane mask of all lanes less than the calling thread
  */
-_CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneMaskLt()
+// _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneMaskLt()
+// {
+//     unsigned int ret;
+//     asm ("mov.u32 %0, %%lanemask_lt;" : "=r"(ret) );
+//     return ret;
+// }
+
+_CCCL_DEVICE _CCCL_FORCEINLINE uint64_t LaneMaskLt()
 {
-    unsigned int ret;
-    asm ("mov.u32 %0, %%lanemask_lt;" : "=r"(ret) );
-    return ret;
+    return __lanemask_lt();
 }
 
 /**
  * \brief Returns the warp lane mask of all lanes less than or equal to the calling thread
  */
-_CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneMaskLe()
+// _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneMaskLe()
+// {
+//     unsigned int ret;
+//     asm ("mov.u32 %0, %%lanemask_le;" : "=r"(ret) );
+//     return ret;
+// }
+
+_CCCL_DEVICE _CCCL_FORCEINLINE uint64_t LaneMaskLe()
 {
-    unsigned int ret;
-    asm ("mov.u32 %0, %%lanemask_le;" : "=r"(ret) );
-    return ret;
+    return ~__lanemask_gt();
 }
 
 /**
  * \brief Returns the warp lane mask of all lanes greater than the calling thread
  */
-_CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneMaskGt()
+// _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneMaskGt()
+// {
+//     unsigned int ret;
+//     asm ("mov.u32 %0, %%lanemask_gt;" : "=r"(ret) );
+//     return ret;
+// }
+
+_CCCL_DEVICE _CCCL_FORCEINLINE uint64_t LaneMaskGt()
 {
-    unsigned int ret;
-    asm ("mov.u32 %0, %%lanemask_gt;" : "=r"(ret) );
-    return ret;
+    return __lanemask_gt();
 }
 
 /**
  * \brief Returns the warp lane mask of all lanes greater than or equal to the calling thread
  */
-_CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneMaskGe()
+// _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneMaskGe()
+// {
+//     unsigned int ret;
+//     asm ("mov.u32 %0, %%lanemask_ge;" : "=r"(ret) );
+//     return ret;
+// }
+
+_CCCL_DEVICE _CCCL_FORCEINLINE uint64_t LaneMaskGe()
 {
-    unsigned int ret;
-    asm ("mov.u32 %0, %%lanemask_ge;" : "=r"(ret) );
-    return ret;
+    CUDAX_PTX_CHECKIN;
+    return ~__lanemask_lt();
 }
 
 /**
@@ -561,11 +720,12 @@ _CCCL_DEVICE _CCCL_FORCEINLINE unsigned int LaneMaskGe()
  */
 template <int LOGICAL_WARP_THREADS, typename T>
 _CCCL_DEVICE _CCCL_FORCEINLINE T
-ShuffleUp(T input, int src_offset, int first_thread, unsigned int member_mask)
+ShuffleUp(T input, int src_offset, int first_thread, unsigned long long member_mask)
 {
     /// The 5-bit SHFL mask for logically splitting warps into sub-segments starts 8-bits up
     enum {
-        SHFL_C = (32 - LOGICAL_WARP_THREADS) << 8
+        // SHFL_C = (32 - LOGICAL_WARP_THREADS) << 8
+        SHFL_C = (64 - LOGICAL_WARP_THREADS) << 8
     };
 
     typedef typename UnitWord<T>::ShuffleWord ShuffleWord;
@@ -577,13 +737,21 @@ ShuffleUp(T input, int src_offset, int first_thread, unsigned int member_mask)
     ShuffleWord     *input_alias    = reinterpret_cast<ShuffleWord *>(&input);
 
     unsigned int shuffle_word;
+#ifdef USE_GPU_FUSION_PTX
     shuffle_word = SHFL_UP_SYNC((unsigned int)input_alias[0], src_offset, first_thread | SHFL_C, member_mask);
+#else //USE_GPU_FUSION_PTX
+    shuffle_word = SHFL_UP_SYNC((unsigned int)input_alias[0], src_offset, first_thread, LOGICAL_WARP_THREADS, member_mask);
+#endif //USE_GPU_FUSION_PTX
     output_alias[0] = shuffle_word;
 
     #pragma unroll
     for (int WORD = 1; WORD < WORDS; ++WORD)
     {
+#ifdef USE_GPU_FUSION_PTX
         shuffle_word       = SHFL_UP_SYNC((unsigned int)input_alias[WORD], src_offset, first_thread | SHFL_C, member_mask);
+ #else //USE_GPU_FUSION_PTX
+        shuffle_word = SHFL_UP_SYNC((unsigned int)input_alias[WORD], src_offset, first_thread, LOGICAL_WARP_THREADS, member_mask);
+#endif //USE_GPU_FUSION_PTX
         output_alias[WORD] = shuffle_word;
     }
 
@@ -642,11 +810,12 @@ ShuffleUp(T input, int src_offset, int first_thread, unsigned int member_mask)
  */
 template <int LOGICAL_WARP_THREADS, typename T>
 _CCCL_DEVICE _CCCL_FORCEINLINE T
-ShuffleDown(T input, int src_offset, int last_thread, unsigned int member_mask)
+ShuffleDown(T input, int src_offset, int last_thread, unsigned long long member_mask)
 {
     /// The 5-bit SHFL mask for logically splitting warps into sub-segments starts 8-bits up
     enum {
-        SHFL_C = (32 - LOGICAL_WARP_THREADS) << 8
+        // SHFL_C = (32 - LOGICAL_WARP_THREADS) << 8
+        SHFL_C = (64 - LOGICAL_WARP_THREADS) << 8
     };
 
     typedef typename UnitWord<T>::ShuffleWord ShuffleWord;
@@ -658,13 +827,21 @@ ShuffleDown(T input, int src_offset, int last_thread, unsigned int member_mask)
     ShuffleWord     *input_alias    = reinterpret_cast<ShuffleWord *>(&input);
 
     unsigned int shuffle_word;
-    shuffle_word    = SHFL_DOWN_SYNC((unsigned int)input_alias[0], src_offset, last_thread | SHFL_C, member_mask);
+#ifdef USE_GPU_FUSION_PTX
+    shuffle_word = SHFL_DOWN_SYNC((unsigned int)input_alias[0], src_offset, last_thread | SHFL_C, member_mask);
+#else //USE_GPU_FUSION_PTX
+    shuffle_word = SHFL_DOWN_SYNC((unsigned int)input_alias[0], src_offset, last_thread, LOGICAL_WARP_THREADS, member_mask);
+#endif //USE_GPU_FUSION_PTX
     output_alias[0] = shuffle_word;
 
     #pragma unroll
     for (int WORD = 1; WORD < WORDS; ++WORD)
     {
+#ifdef USE_GPU_FUSION_PTX
         shuffle_word       = SHFL_DOWN_SYNC((unsigned int)input_alias[WORD], src_offset, last_thread | SHFL_C, member_mask);
+#else //USE_GPU_FUSION_PTX
+        shuffle_word = SHFL_DOWN_SYNC((unsigned int)input_alias[WORD], src_offset, last_thread, LOGICAL_WARP_THREADS, member_mask);
+#endif //USE_GPU_FUSION_PTX
         output_alias[WORD] = shuffle_word;
     }
 
@@ -721,11 +898,12 @@ ShuffleDown(T input, int src_offset, int last_thread, unsigned int member_mask)
  *   32-bit mask of participating warp lanes
  */
 template <int LOGICAL_WARP_THREADS, typename T>
-_CCCL_DEVICE _CCCL_FORCEINLINE T ShuffleIndex(T input, int src_lane, unsigned int member_mask)
+_CCCL_DEVICE _CCCL_FORCEINLINE T ShuffleIndex(T input, int src_lane, unsigned long long member_mask)
 {
     /// The 5-bit SHFL mask for logically splitting warps into sub-segments starts 8-bits up
     enum {
-        SHFL_C = ((32 - LOGICAL_WARP_THREADS) << 8) | (LOGICAL_WARP_THREADS - 1)
+        // SHFL_C = ((32 - LOGICAL_WARP_THREADS) << 8) | (LOGICAL_WARP_THREADS - 1)
+        SHFL_C = ((64 - LOGICAL_WARP_THREADS) << 8) | (LOGICAL_WARP_THREADS - 1)
     };
 
     typedef typename UnitWord<T>::ShuffleWord ShuffleWord;
@@ -737,21 +915,33 @@ _CCCL_DEVICE _CCCL_FORCEINLINE T ShuffleIndex(T input, int src_lane, unsigned in
     ShuffleWord     *input_alias    = reinterpret_cast<ShuffleWord *>(&input);
 
     unsigned int shuffle_word;
+#ifdef USE_GPU_FUSION_PTX
     shuffle_word = SHFL_IDX_SYNC((unsigned int)input_alias[0],
                                  src_lane,
                                  SHFL_C,
                                  member_mask);
-
+#else //USE_GPU_FUSION_PTX
+    shuffle_word = SHFL_IDX_SYNC((unsigned int)input_alias[0],
+                                src_lane,
+                                LOGICAL_WARP_THREADS,
+                                member_mask);
+#endif //USE_GPU_FUSION_PTX
     output_alias[0] = shuffle_word;
 
     #pragma unroll
     for (int WORD = 1; WORD < WORDS; ++WORD)
     {
+#ifdef USE_GPU_FUSION_PTX
         shuffle_word = SHFL_IDX_SYNC((unsigned int)input_alias[WORD],
                                      src_lane,
                                      SHFL_C,
                                      member_mask);
-
+#else //USE_GPU_FUSION_PTX
+        shuffle_word = SHFL_IDX_SYNC((unsigned int)input_alias[WORD],
+                                     src_lane,
+                                     LOGICAL_WARP_THREADS,
+                                     member_mask);
+#endif //USE_GPU_FUSION_PTX
         output_alias[WORD] = shuffle_word;
     }
 
@@ -778,6 +968,7 @@ namespace detail
  * warp_matcher_t<4, 32>::match_any(label);
  * ```
  */
+#ifdef USE_GPU_FUSION_PTX
 template <int LABEL_BITS, int WARP_ACTIVE_THREADS>
 struct warp_matcher_t
 {
@@ -788,11 +979,25 @@ struct warp_matcher_t
   }
 
 };
+#else
+template <int LABEL_BITS, int WARP_ACTIVE_THREADS>
+struct warp_matcher_t
+{
+
+  static _CCCL_DEVICE unsigned long long match_any(unsigned int label)
+  {
+    return warp_matcher_t<LABEL_BITS, 64>::match_any(label) & ~(~(0ull) << WARP_ACTIVE_THREADS);
+  }
+
+};
+#endif
+
+
 
 template <int LABEL_BITS>
 struct warp_matcher_t<LABEL_BITS, CUB_PTX_WARP_THREADS>
 {
-
+#if USE_GPU_FUSION_PTX
   // match.any.sync.b32 is slower when matching a few bits
   // using a ballot loop instead
   static _CCCL_DEVICE unsigned int match_any(unsigned int label)
@@ -819,7 +1024,23 @@ struct warp_matcher_t<LABEL_BITS, CUB_PTX_WARP_THREADS>
 
       return retval;
   }
+#else //USE_GPU_FUSION_PTX
 
+  static _CCCL_DEVICE unsigned long long match_any(unsigned int label)
+{
+    unsigned long long retval;
+    for (int BIT = 0; BIT < LABEL_BITS; ++BIT)
+    {
+        unsigned long long current_bit = 1ULL << BIT;
+        unsigned long long mask = current_bit & label;
+        bool p = mask == current_bit;
+        mask = __ballot_sync(0xffffffffffffffffull, p);
+        mask = p ? mask : ~mask;
+        retval = (BIT == 0) ? mask : retval & mask;
+    }
+    return retval;
+}
+#endif //USE_GPU_FUSION_PTX
 };
 
 } // namespace detail
@@ -829,10 +1050,17 @@ struct warp_matcher_t<LABEL_BITS, CUB_PTX_WARP_THREADS>
  * Compute a 32b mask of threads having the same least-significant
  * LABEL_BITS of \p label as the calling thread.
  */
+#ifdef USE_GPU_FUSION_PTX
 template <int LABEL_BITS, int WARP_ACTIVE_THREADS = CUB_PTX_WARP_THREADS>
 inline _CCCL_DEVICE unsigned int MatchAny(unsigned int label)
 {
   return detail::warp_matcher_t<LABEL_BITS, WARP_ACTIVE_THREADS>::match_any(label);
 }
-
+#else //USE_GPU_FUSION_PTX
+template <int LABEL_BITS, int WARP_ACTIVE_THREADS = CUB_PTX_WARP_THREADS>
+inline _CCCL_DEVICE unsigned long long MatchAny(unsigned int label)
+{
+  return detail::warp_matcher_t<LABEL_BITS, WARP_ACTIVE_THREADS>::match_any(label);
+}
+#endif //USE_GPU_FUSION_PTX
 CUB_NAMESPACE_END

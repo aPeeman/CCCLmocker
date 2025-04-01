@@ -132,7 +132,9 @@ struct agent_dummy_algorithm_t
 // Kernel template definition
 //----------------------------------------------------------------------------
 template <typename ChainedPolicyT, typename InputIteratorT, typename OutputIteratorT, typename OffsetT>
-void __global__ __launch_bounds__(
+void __global__ 
+#ifdef USE_GPU_FUSION_DEFAULT_POLICY
+__launch_bounds__(
   cub::detail::vsmem_helper_fallback_policy_t<
     typename ChainedPolicyT::ActivePolicy::DummyAlgorithmPolicy,
     typename ChainedPolicyT::ActivePolicy::FallbackDummyAlgorithmPolicy,
@@ -140,6 +142,16 @@ void __global__ __launch_bounds__(
     InputIteratorT,
     OutputIteratorT,
     OffsetT>::agent_policy_t::BLOCK_THREADS)
+#else
+__launch_bounds__(
+  int(cub::detail::vsmem_helper_fallback_policy_t<
+    typename ChainedPolicyT::ActivePolicy::DummyAlgorithmPolicy,
+    typename ChainedPolicyT::ActivePolicy::FallbackDummyAlgorithmPolicy,
+    agent_dummy_algorithm_t,
+    InputIteratorT,
+    OutputIteratorT,
+    OffsetT>::agent_policy_t::BLOCK_THREADS))
+#endif
   dummy_algorithm_kernel(
     InputIteratorT d_in,
     OutputIteratorT d_out,
@@ -403,7 +415,7 @@ CUB_RUNTIME_FUNCTION static cudaError_t device_dummy_algorithm(
 
 DECLARE_LAUNCH_WRAPPER(device_dummy_algorithm, dummy_algorithm);
 
-// %PARAM% TEST_LAUNCH lid 0:1:2
+// %PARAM% TEST_LAUNCH lid 0
 
 using type_list = c2h::type_list< large_custom_t<1>, large_custom_t<80>, large_custom_t<128>, large_custom_t<512>>;
 

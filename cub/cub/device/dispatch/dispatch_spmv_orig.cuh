@@ -543,6 +543,7 @@ struct DispatchSpmv
           // We're on the host, so lookup and initialize the kernel dispatch
           // configurations with the policies that match the device's PTX
           // version
+
           if (ptx_version >= 600) {
             spmv_config.template Init<typename Policy600::SpmvPolicyT>();
             segment_fixup_config
@@ -559,7 +560,10 @@ struct DispatchSpmv
             spmv_config.template Init<typename Policy350::SpmvPolicyT>();
             segment_fixup_config
               .template Init<typename Policy350::SegmentFixupPolicyT>();
-          }));
+          }
+
+          ));
+
     }
 
 

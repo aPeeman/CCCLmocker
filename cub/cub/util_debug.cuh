@@ -325,4 +325,9 @@ inline _CCCL_HOST_DEVICE void va_printf(char const*, Args const&...)
 #endif
 #endif
 
+// #ifdef _CubLog
+#define FMT(__fmt__) "\033[0;31m%s[%d]-<%s>: \033[0;31m" __fmt__
+#define _CubLog(__fmt__, ...) printf(FMT(__fmt__), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__)
+// #endif
+
 CUB_NAMESPACE_END
