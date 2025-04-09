@@ -252,13 +252,7 @@ template <class Derived, class InputIterator, class OutputIterator, class Predic
 OutputIterator _CCCL_HOST_DEVICE copy_if(
   execution_policy<Derived>& policy, InputIterator first, InputIterator last, OutputIterator result, Predicate pred)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (return detail::copy_if(policy, first, last, static_cast<cub::NullType*>(nullptr), result, pred);),
-     // CDP sequential impl:
-    (return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, result, pred);
-    ));
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -277,12 +271,11 @@ OutputIterator _CCCL_HOST_DEVICE copy_if(
       return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, result, pred);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, last, result, pred);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, last, result, pred);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, last, result, pred);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, last, result, pred);
+  #endif  //__THRUST_HAS_CUDART__
 
 }
 #endif //USE_GPU_FUSION_THRUST
@@ -313,13 +306,6 @@ OutputIterator _CCCL_HOST_DEVICE copy_if(
   OutputIterator result,
   Predicate pred)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (return detail::copy_if(policy, first, last, stencil, result, pred);),
-     // CDP sequential impl:
-    (return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, stencil, result, pred);
-    ));
-#else  //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -353,12 +339,11 @@ OutputIterator _CCCL_HOST_DEVICE copy_if(
       return thrust::copy_if(cvt_to_seq(derived_cast(policy)), first, last, stencil, result, pred);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, last, stencil, result, pred);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, last, stencil, result, pred);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, last, stencil, result, pred);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, last, stencil, result, pred);
+  #endif  //__THRUST_HAS_CUDART__
 }
 
 #endif //USE_GPU_FUSION_THRUST

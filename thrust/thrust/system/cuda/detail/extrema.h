@@ -448,19 +448,6 @@ min_element(execution_policy<Derived> &policy,
             ItemsIt                    last,
             BinaryPred                 binary_pred)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (last = __extrema::element<__extrema::arg_min_f>(policy,
-                                                     first,
-                                                     last,
-                                                     binary_pred);),
-     // CDP sequential impl:
-    (last = thrust::min_element(cvt_to_seq(derived_cast(policy)),
-                                first,
-                                last,
-                                binary_pred);    ));
-  return last;
-#else  //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -497,12 +484,11 @@ min_element(execution_policy<Derived> &policy,
                                 binary_pred);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, last, binary_pred);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, last, binary_pred);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, last, binary_pred);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, last, binary_pred);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -551,19 +537,6 @@ max_element(execution_policy<Derived> &policy,
             ItemsIt                    last,
             BinaryPred                 binary_pred)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (last = __extrema::element<__extrema::arg_max_f>(policy,
-                                                     first,
-                                                     last,
-                                                     binary_pred);),
-     // CDP sequential impl:
-    (last = thrust::max_element(cvt_to_seq(derived_cast(policy)),
-                                first,
-                                last,
-                                binary_pred);    ));
-  return last;
-#else  //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -600,12 +573,11 @@ max_element(execution_policy<Derived> &policy,
                                 binary_pred);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, last, binary_pred);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, last, binary_pred);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, last, binary_pred);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, last, binary_pred);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -690,43 +662,7 @@ minmax_element(execution_policy<Derived> &policy,
   {
     return ret;
   }
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (using InputType = typename iterator_traits<ItemsIt>::value_type;
-     using IndexType = typename iterator_traits<ItemsIt>::difference_type;
 
-     const auto num_items =
-       static_cast<IndexType>(thrust::distance(first, last));
-
-     using iterator_tuple = tuple<ItemsIt, counting_iterator_t<IndexType>>;
-     using zip_iterator   = zip_iterator<iterator_tuple>;
-
-     iterator_tuple iter_tuple =
-       thrust::make_tuple(first, counting_iterator_t<IndexType>(0));
-
-     using arg_minmax_t =
-       __extrema::arg_minmax_f<InputType, IndexType, BinaryPred>;
-     using two_pairs_type = typename arg_minmax_t::two_pairs_type;
-     using duplicate_t    = typename arg_minmax_t::duplicate_tuple;
-     using transform_t =
-       transform_input_iterator_t<two_pairs_type, zip_iterator, duplicate_t>;
-
-     zip_iterator   begin = make_zip_iterator(iter_tuple);
-     two_pairs_type result =
-       __extrema::extrema(policy,
-                          transform_t(begin, duplicate_t()),
-                          num_items,
-                          arg_minmax_t(binary_pred),
-                          (two_pairs_type *)(NULL));
-     ret = thrust::make_pair(first + get<1>(get<0>(result)),
-                             first + get<1>(get<1>(result)));),
-     // CDP sequential impl:
-    (ret = thrust::minmax_element(cvt_to_seq(derived_cast(policy)),
-                                  first,
-                                  last,
-                                  binary_pred);    ));
-  return ret;
-#else  //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -787,12 +723,11 @@ minmax_element(execution_policy<Derived> &policy,
                                   binary_pred);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, last, binary_pred);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, last, binary_pred);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, last, binary_pred);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, last, binary_pred);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 

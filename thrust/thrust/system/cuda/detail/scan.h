@@ -258,21 +258,7 @@ OutputIt inclusive_scan_n(thrust::cuda_cub::execution_policy<Derived> &policy,
                           OutputIt result,
                           ScanOp scan_op)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (result = thrust::cuda_cub::detail::inclusive_scan_n_impl(policy,
-                                                              first,
-                                                              num_items,
-                                                              result,
-                                                              scan_op);),
-     // CDP sequential impl:
-    (result = thrust::inclusive_scan(cvt_to_seq(derived_cast(policy)),
-                                     first,
-                                     first + num_items,
-                                     result,
-                                     scan_op);    ));
-  return result;                                     
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -315,12 +301,11 @@ OutputIt inclusive_scan_n(thrust::cuda_cub::execution_policy<Derived> &policy,
                                      scan_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, num_items, result, scan_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, num_items, result, scan_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, num_items, result, scan_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, num_items, result, scan_op);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -402,23 +387,7 @@ OutputIt exclusive_scan_n(thrust::cuda_cub::execution_policy<Derived> &policy,
                           T init,
                           ScanOp scan_op)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (result = thrust::cuda_cub::detail::exclusive_scan_n_impl(policy,
-                                                              first,
-                                                              num_items,
-                                                              result,
-                                                              init,
-                                                              scan_op);),
-     // CDP sequential impl:
-    (result = thrust::exclusive_scan(cvt_to_seq(derived_cast(policy)),
-                                     first,
-                                     first + num_items,
-                                     result,
-                                     init,
-                                     scan_op);    ));
-  return result;                                     
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -467,12 +436,11 @@ OutputIt exclusive_scan_n(thrust::cuda_cub::execution_policy<Derived> &policy,
                                      scan_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, num_items, result, init, scan_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, num_items, result, init, scan_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, num_items, result, init, scan_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, num_items, result, init, scan_op);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 

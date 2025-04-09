@@ -152,7 +152,7 @@ namespace __reduce {
                                                  ReducePolicy4B>::type type;
   };    // Tuning sm35
 
-#ifndef USE_GPU_FUSION_THRUST
+#ifndef USE_GPU_FUSION_PTX
   template <class T>
   struct Tuning<sm52, T> : Tuning<sm35,T>
   {
@@ -178,7 +178,7 @@ namespace __reduce {
                                                  ReducePolicy1B,
                                                  ReducePolicy4B>::type type;
   };  
-#endif //USE_GPU_FUSION_THRUST
+#endif //USE_GPU_FUSION_PTX
 
   template <class InputIt,
             class OutputIt,
@@ -1073,22 +1073,7 @@ T reduce_n(execution_policy<Derived>& policy,
            T                          init,
            BinaryOp                   binary_op)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (init =
-                         thrust::cuda_cub::detail::reduce_n_impl(policy,
-                                                                 first,
-                                                                 num_items,
-                                                                 init,
-                                                                 binary_op);),
-     // CDP sequential impl:
-    (init = thrust::reduce(cvt_to_seq(derived_cast(policy)),
-                                             first,
-                                             first + num_items,
-                                             init,
-                                             binary_op);    ));
-  return init;                                             
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -1131,12 +1116,11 @@ T reduce_n(execution_policy<Derived>& policy,
                                              binary_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, num_items, init, binary_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, num_items, init, binary_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, num_items, init, binary_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, num_items, init, binary_op);
+  #endif  //__THRUST_HAS_CUDART__
 }
 
 #endif //USE_GPU_FUSION_THRUST

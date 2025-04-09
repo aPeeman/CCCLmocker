@@ -756,17 +756,7 @@ unique_copy(execution_policy<Derived> &policy,
             OutputIt                   result,
             BinaryPred                 binary_pred)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (result = __unique::unique(policy, first, last, result, binary_pred);),
-     // CDP sequential impl:
-    (result = thrust::unique_copy(cvt_to_seq(derived_cast(policy)),
-                                  first,
-                                  last,
-                                  result,
-                                  binary_pred);    ));
-  return result;                                  
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -805,12 +795,11 @@ unique_copy(execution_policy<Derived> &policy,
                                   binary_pred);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, last, result, binary_pred);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, last, result, binary_pred);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, last, result, binary_pred);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, last, result, binary_pred);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -861,16 +850,6 @@ unique(execution_policy<Derived> &policy,
        BinaryPred                 binary_pred)
 {
   ForwardIt ret = first;
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = cuda_cub::unique_copy(policy, first, last, first, binary_pred);),
-     // CDP sequential impl:
-    (ret = thrust::unique(cvt_to_seq(derived_cast(policy)),
-                          first,
-                          last,
-                          binary_pred);    ));
-  return ret;                          
-#else  //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -904,12 +883,11 @@ unique(execution_policy<Derived> &policy,
                           binary_pred);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, last, binary_pred);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, last, binary_pred);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, last, binary_pred);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, last, binary_pred);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 

@@ -356,26 +356,7 @@ inclusive_scan_by_key(execution_policy<Derived> &policy,
                       ScanOp                     scan_op)
 {
   ValOutputIt ret = value_result;
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = thrust::cuda_cub::detail::inclusive_scan_by_key_n(
-       policy,
-       key_first,
-       value_first,
-       value_result,
-       thrust::distance(key_first, key_last),
-       binary_pred,
-       scan_op);),
-     // CDP sequential impl:
-    (ret = thrust::inclusive_scan_by_key(cvt_to_seq(derived_cast(policy)),
-                                         key_first,
-                                         key_last,
-                                         value_first,
-                                         value_result,
-                                         binary_pred,
-                                         scan_op);    ));
-  return ret;                                         
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -431,12 +412,11 @@ inclusive_scan_by_key(execution_policy<Derived> &policy,
                                          scan_op); 
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, key_first, key_last, value_first, value_result, binary_pred, scan_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, key_first, key_last, value_first, value_result, binary_pred, scan_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, key_first, key_last, value_first, value_result, binary_pred, scan_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, key_first, key_last, value_first, value_result, binary_pred, scan_op);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -547,28 +527,7 @@ exclusive_scan_by_key(execution_policy<Derived> &policy,
                       ScanOp                     scan_op)
 {
   ValOutputIt ret = value_result;
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = thrust::cuda_cub::detail::exclusive_scan_by_key_n(
-       policy,
-       key_first,
-       value_first,
-       value_result,
-       thrust::distance(key_first, key_last),
-       init,
-       binary_pred,
-       scan_op);),
-     // CDP sequential impl:
-    (ret = thrust::exclusive_scan_by_key(cvt_to_seq(derived_cast(policy)),
-                                         key_first,
-                                         key_last,
-                                         value_first,
-                                         value_result,
-                                         init,
-                                         binary_pred,
-                                         scan_op);    ));
-  return ret;                                         
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -630,12 +589,12 @@ exclusive_scan_by_key(execution_policy<Derived> &policy,
                                          scan_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, key_first, key_last, value_first, value_result, init, binary_pred, scan_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, key_first, key_last, value_first, value_result, init, binary_pred, scan_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, key_first, key_last, value_first, value_result, init, binary_pred, scan_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, key_first, key_last, value_first, value_result, init, binary_pred, scan_op);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 

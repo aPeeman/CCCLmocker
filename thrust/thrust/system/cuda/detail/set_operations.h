@@ -1411,33 +1411,7 @@ set_difference(execution_policy<Derived> &policy,
                OutputIt                   result,
                CompareOp                  compare)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (using items1_t  = thrust::iterator_value_t<ItemsIt1>;
-     items1_t *null_ = nullptr;
-     auto tmp = __set_operations::set_operations<thrust::detail::false_type>(
-       policy,
-       items1_first,
-       items1_last,
-       items2_first,
-       items2_last,
-       null_,
-       null_,
-       result,
-       null_,
-       compare,
-       __set_operations::serial_set_difference());
-     result = tmp.first;),
-     // CDP sequential impl:
-    (result = thrust::set_difference(cvt_to_seq(derived_cast(policy)),
-                                     items1_first,
-                                     items1_last,
-                                     items2_first,
-                                     items2_last,
-                                     result,
-                                     compare);    ));
-  return result;                                     
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -1500,12 +1474,12 @@ set_difference(execution_policy<Derived> &policy,
                                      compare);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -1590,33 +1564,7 @@ set_intersection(execution_policy<Derived> &policy,
                  OutputIt                   result,
                  CompareOp                  compare)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (using items1_t  = thrust::iterator_value_t<ItemsIt1>;
-     items1_t *null_ = NULL;
-     auto tmp = __set_operations::set_operations<thrust::detail::false_type>(
-       policy,
-       items1_first,
-       items1_last,
-       items2_first,
-       items2_last,
-       null_,
-       null_,
-       result,
-       null_,
-       compare,
-       __set_operations::serial_set_intersection());
-     result = tmp.first;),
-     // CDP sequential impl:
-    (result = thrust::set_intersection(cvt_to_seq(derived_cast(policy)),
-                                       items1_first,
-                                       items1_last,
-                                       items2_first,
-                                       items2_last,
-                                       result,
-                                       compare);    ));
-  return result;                                       
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -1679,12 +1627,12 @@ set_intersection(execution_policy<Derived> &policy,
                                        compare);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -1771,33 +1719,7 @@ set_symmetric_difference(execution_policy<Derived> &policy,
                          OutputIt                   result,
                          CompareOp                  compare)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (using items1_t  = thrust::iterator_value_t<ItemsIt1>;
-     items1_t *null_ = nullptr;
-     auto tmp = __set_operations::set_operations<thrust::detail::false_type>(
-       policy,
-       items1_first,
-       items1_last,
-       items2_first,
-       items2_last,
-       null_,
-       null_,
-       result,
-       null_,
-       compare,
-       __set_operations::serial_set_symmetric_difference());
-     result = tmp.first;),
-     // CDP sequential impl:
-    (result = thrust::set_symmetric_difference(cvt_to_seq(derived_cast(policy)),
-                                               items1_first,
-                                               items1_last,
-                                               items2_first,
-                                               items2_last,
-                                               result,
-                                               compare);    ));
-  return result;                                               
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -1860,12 +1782,12 @@ set_symmetric_difference(execution_policy<Derived> &policy,
                                                compare); 
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -1950,33 +1872,7 @@ set_union(execution_policy<Derived> &policy,
           OutputIt                   result,
           CompareOp                  compare)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (using items1_t  = thrust::iterator_value_t<ItemsIt1>;
-     items1_t *null_ = nullptr;
-     auto tmp = __set_operations::set_operations<thrust::detail::false_type>(
-       policy,
-       items1_first,
-       items1_last,
-       items2_first,
-       items2_last,
-       null_,
-       null_,
-       result,
-       null_,
-       compare,
-       __set_operations::serial_set_union());
-     result = tmp.first;),
-     // CDP sequential impl:
-    (result = thrust::set_union(cvt_to_seq(derived_cast(policy)),
-                                items1_first,
-                                items1_last,
-                                items2_first,
-                                items2_last,
-                                result,
-                                compare);    ));
-  return result;                                
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -2039,12 +1935,12 @@ set_union(execution_policy<Derived> &policy,
                                 compare); 
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, items1_first, items1_last, items2_first, items2_last, result, compare);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -2150,33 +2046,7 @@ set_difference_by_key(execution_policy<Derived> &policy,
                       CompareOp                  compare_op)
 {
   auto ret = thrust::make_pair(keys_result, items_result);
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = __set_operations::set_operations<thrust::detail::true_type>(
-       policy,
-       keys1_first,
-       keys1_last,
-       keys2_first,
-       keys2_last,
-       items1_first,
-       items2_first,
-       keys_result,
-       items_result,
-       compare_op,
-       __set_operations::serial_set_difference());),
-     // CDP sequential impl:
-    (ret = thrust::set_difference_by_key(cvt_to_seq(derived_cast(policy)),
-                                         keys1_first,
-                                         keys1_last,
-                                         keys2_first,
-                                         keys2_last,
-                                         items1_first,
-                                         items2_first,
-                                         keys_result,
-                                         items_result,
-                                         compare_op);    ));
-  return ret;                                         
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -2251,12 +2121,12 @@ set_difference_by_key(execution_policy<Derived> &policy,
                                          compare_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -2361,32 +2231,7 @@ set_intersection_by_key(execution_policy<Derived> &policy,
                         CompareOp                  compare_op)
 {
   auto ret = thrust::make_pair(keys_result, items_result);
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = __set_operations::set_operations<thrust::detail::true_type>(
-       policy,
-       keys1_first,
-       keys1_last,
-       keys2_first,
-       keys2_last,
-       items1_first,
-       items1_first,
-       keys_result,
-       items_result,
-       compare_op,
-       __set_operations::serial_set_intersection());),
-     // CDP sequential impl:
-    (ret = thrust::set_intersection_by_key(cvt_to_seq(derived_cast(policy)),
-                                           keys1_first,
-                                           keys1_last,
-                                           keys2_first,
-                                           keys2_last,
-                                           items1_first,
-                                           keys_result,
-                                           items_result,
-                                           compare_op);    ));
-  return ret;                                           
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -2456,12 +2301,12 @@ set_intersection_by_key(execution_policy<Derived> &policy,
                                            compare_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, keys_result, items_result, compare_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, keys_result, items_result, compare_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, keys_result, items_result, compare_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, keys_result, items_result, compare_op);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -2568,34 +2413,7 @@ set_symmetric_difference_by_key(execution_policy<Derived> &policy,
                                 CompareOp                  compare_op)
 {
   auto ret = thrust::make_pair(keys_result, items_result);
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = __set_operations::set_operations<thrust::detail::true_type>(
-       policy,
-       keys1_first,
-       keys1_last,
-       keys2_first,
-       keys2_last,
-       items1_first,
-       items2_first,
-       keys_result,
-       items_result,
-       compare_op,
-       __set_operations::serial_set_symmetric_difference());),
-     // CDP sequential impl:
-    (ret =
-       thrust::set_symmetric_difference_by_key(cvt_to_seq(derived_cast(policy)),
-                                               keys1_first,
-                                               keys1_last,
-                                               keys2_first,
-                                               keys2_last,
-                                               items1_first,
-                                               items2_first,
-                                               keys_result,
-                                               items_result,
-                                               compare_op);    ));
-  return ret;                                               
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -2670,12 +2488,12 @@ set_symmetric_difference_by_key(execution_policy<Derived> &policy,
                                                compare_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -2783,33 +2601,7 @@ set_union_by_key(execution_policy<Derived> &policy,
                  CompareOp                  compare_op)
 {
   auto ret = thrust::make_pair(keys_result, items_result);
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = __set_operations::set_operations<thrust::detail::true_type>(
-       policy,
-       keys1_first,
-       keys1_last,
-       keys2_first,
-       keys2_last,
-       items1_first,
-       items2_first,
-       keys_result,
-       items_result,
-       compare_op,
-       __set_operations::serial_set_union());),
-     // CDP sequential impl:
-    (ret = thrust::set_union_by_key(cvt_to_seq(derived_cast(policy)),
-                                    keys1_first,
-                                    keys1_last,
-                                    keys2_first,
-                                    keys2_last,
-                                    items1_first,
-                                    items2_first,
-                                    keys_result,
-                                    items_result,
-                                    compare_op);    ));
-  return ret;                                    
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -2884,12 +2676,12 @@ set_union_by_key(execution_policy<Derived> &policy,
                                     compare_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, keys1_first, keys1_last, keys2_first, keys2_last, items1_first, items2_first, keys_result, items_result, compare_op);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 

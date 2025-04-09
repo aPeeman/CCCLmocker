@@ -149,14 +149,6 @@ T _CCCL_HOST_DEVICE transform_reduce(
   typedef typename iterator_traits<InputIt>::difference_type size_type;
   const size_type num_items = static_cast<size_type>(thrust::distance(first, last));
 
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (init = thrust::cuda_cub::detail::transform_reduce_n_impl(policy, first, num_items, transform_op, init, reduce_op);),
-     // CDP sequential impl:
-    (init = thrust::transform_reduce(
-       cvt_to_seq(derived_cast(policy)), first, first + num_items, transform_op, init, reduce_op);    ));
-  return init;       
-#else  //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -177,12 +169,12 @@ T _CCCL_HOST_DEVICE transform_reduce(
        cvt_to_seq(derived_cast(policy)), first, first + num_items, transform_op, init, reduce_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, num_items, transform_op, init, reduce_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, num_items, transform_op, init, reduce_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, num_items, transform_op, init, reduce_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, num_items, transform_op, init, reduce_op);
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 #endif //USE_GPU_FUSION_THRUST
 

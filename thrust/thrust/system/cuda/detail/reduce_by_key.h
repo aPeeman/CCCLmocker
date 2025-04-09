@@ -1174,28 +1174,7 @@ reduce_by_key(execution_policy<Derived> &policy,
               BinaryOp                   binary_op)
 {
   auto ret = thrust::make_pair(keys_output, values_output);
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = __reduce_by_key::reduce_by_key(policy,
-                                                            keys_first,
-                                                            keys_last,
-                                                            values_first,
-                                                            keys_output,
-                                                            values_output,
-                                                            binary_pred,
-                                                            binary_op);),
-     // CDP sequential impl:
-    (ret =
-                         thrust::reduce_by_key(cvt_to_seq(derived_cast(policy)),
-                                               keys_first,
-                                               keys_last,
-                                               values_first,
-                                               keys_output,
-                                               values_output,
-                                               binary_pred,
-                                               binary_op);    ));
-  return ret;                                               
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -1256,12 +1235,11 @@ reduce_by_key(execution_policy<Derived> &policy,
                                                binary_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, keys_first, keys_last, values_first, keys_output, values_output, binary_pred, binary_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, keys_first, keys_last, values_first, keys_output, values_output, binary_pred, binary_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, keys_first, keys_last, values_first, keys_output, values_output, binary_pred, binary_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, keys_first, keys_last, values_first, keys_output, values_output, binary_pred, binary_op);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 

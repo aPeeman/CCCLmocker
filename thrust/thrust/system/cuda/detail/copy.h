@@ -148,14 +148,6 @@ copy(execution_policy<System> &system,
      InputIterator             last,
      OutputIterator            result)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (result = __copy::device_to_device(system, first, last, result);),
-     // CDP sequential impl:
-    (result =
-       thrust::copy(cvt_to_seq(derived_cast(system)), first, last, result);    ));
-  return result;
-#else  //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -185,12 +177,11 @@ copy(execution_policy<System> &system,
        thrust::copy(cvt_to_seq(derived_cast(system)), first, last, result);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(system, first, last, result);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(system, first, last, result);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(system, first, last, result);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(system, first, last, result);
+  #endif  //__THRUST_HAS_CUDART__
 }    // end copy()
 #endif //USE_GPU_FUSION_THRUST
 
@@ -229,17 +220,6 @@ copy_n(execution_policy<System> &system,
        Size                      n,
        OutputIterator            result)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (result = __copy::device_to_device(system,
-                                       first,
-                                       thrust::next(first, n),
-                                       result);),
-     // CDP sequential impl:
-    (result =
-       thrust::copy_n(cvt_to_seq(derived_cast(system)), first, n, result);    ));
-  return result;
-#else  //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -272,12 +252,11 @@ copy_n(execution_policy<System> &system,
        thrust::copy_n(cvt_to_seq(derived_cast(system)), first, n, result);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(system, first, n, result);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(system, first, n, result);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(system, first, n, result);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(system, first, n, result);
+  #endif  //__THRUST_HAS_CUDART__
 } // end copy_n()
 
 #endif //USE_GPU_FUSION_THRUST

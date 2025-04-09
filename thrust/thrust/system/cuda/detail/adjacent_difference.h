@@ -285,21 +285,6 @@ adjacent_difference(execution_policy<Derived> &policy,
                     OutputIt                   result,
                     BinaryOp                   binary_op)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (result = __adjacent_difference::adjacent_difference(policy,
-                                                         first,
-                                                         last,
-                                                         result,
-                                                         binary_op);),
-     // CDP sequential impl:                                                         
-    (result = thrust::adjacent_difference(cvt_to_seq(derived_cast(policy)),
-                                          first,
-                                          last,
-                                          result,
-                                          binary_op);));
-  return result;
-#else //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -342,12 +327,12 @@ adjacent_difference(execution_policy<Derived> &policy,
                                           binary_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, first, last, result, binary_op);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, first, last, result, binary_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND    
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, first, last, result, binary_op);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, first, last, result, binary_op);
+  #endif  //__THRUST_HAS_CUDART__
+    
 
 }
 #endif //USE_GPU_FUSION_THRUST

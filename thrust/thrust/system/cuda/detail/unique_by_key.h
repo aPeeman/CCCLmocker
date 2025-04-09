@@ -276,14 +276,7 @@ pair<KeyOutputIt, ValOutputIt> _CCCL_HOST_DEVICE unique_by_key_copy(
   BinaryPred binary_pred)
 {
   auto ret = thrust::make_pair(keys_result, values_result);
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = detail::unique_by_key(policy, keys_first, keys_last, values_first, keys_result, values_result, binary_pred);),
-     // CDP sequential impl:
-    (ret = thrust::unique_by_key_copy(
-       cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, keys_result, values_result, binary_pred);    ));
-  return ret;       
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -322,12 +315,11 @@ pair<KeyOutputIt, ValOutputIt> _CCCL_HOST_DEVICE unique_by_key_copy(
        cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, keys_first, keys_last, values_first, keys_result, values_result, binary_pred);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 
@@ -372,14 +364,6 @@ pair<KeyInputIt, ValInputIt> _CCCL_HOST_DEVICE unique_by_key(
   BinaryPred binary_pred)
 {
   auto ret = thrust::make_pair(keys_first, values_first);
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (ret = cuda_cub::unique_by_key_copy(
-       policy, keys_first, keys_last, values_first, keys_first, values_first, binary_pred);),
-     // CDP sequential impl:
-    (ret = thrust::unique_by_key(cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, binary_pred);    ));
-  return ret;    
-#else  //USE_GPU_WORKAROUND
   struct workaround
   {
     __host__
@@ -411,12 +395,11 @@ pair<KeyInputIt, ValInputIt> _CCCL_HOST_DEVICE unique_by_key(
 			return thrust::unique_by_key(cvt_to_seq(derived_cast(policy)), keys_first, keys_last, values_first, binary_pred);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
-    workaround::par(policy, keys_first, keys_last, values_first, binary_pred);
-  #else  //THRUST_RDC_ENABLED
-    workaround::seq(policy, keys_first, keys_last, values_first, binary_pred);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #ifdef __THRUST_HAS_CUDART__
+    return workaround::par(policy, keys_first, keys_last, values_first, binary_pred);
+  #else  //__THRUST_HAS_CUDART__
+    return workaround::seq(policy, keys_first, keys_last, values_first, binary_pred);
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 

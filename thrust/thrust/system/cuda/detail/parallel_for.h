@@ -93,20 +93,7 @@ parallel_for(execution_policy<Derived> &policy,
   {
     return;
   }
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (cudaStream_t stream = cuda_cub::stream(policy);
-     cudaError_t status = cub::DeviceFor::Bulk(count, f, stream);
-     cuda_cub::throw_on_error(status, "parallel_for failed");
-     status = cuda_cub::synchronize_optional(policy);
-     cuda_cub::throw_on_error(status, "parallel_for: failed to synchronize");),
-     // CDP sequential impl:
-    (for (Size idx = 0; idx != count; ++idx)
-      {
-        f(idx);
-      } 
-    ));
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -136,12 +123,11 @@ parallel_for(execution_policy<Derived> &policy,
       }
     }
   };
-  #ifdef THRUST_RDC_ENABLED
+  #ifdef __THRUST_HAS_CUDART__
     workaround::par(policy, f, count);
-  #else  //THRUST_RDC_ENABLED
+  #else  //__THRUST_HAS_CUDART__
     workaround::seq(policy, f, count);
-  #endif  //THRUST_RDC_ENABLED
-#endif  //USE_GPU_WORKAROUND
+  #endif  //__THRUST_HAS_CUDART__
 }
 #endif //USE_GPU_FUSION_THRUST
 

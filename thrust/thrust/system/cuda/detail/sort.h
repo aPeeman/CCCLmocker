@@ -596,18 +596,7 @@ sort(execution_policy<Derived>& policy,
      ItemsIt                    last,
      CompareOp                  compare_op)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (using item_t = thrust::iterator_value_t<ItemsIt>; item_t *null_ = nullptr;
-     __smart_sort::smart_sort<thrust::detail::false_type,
-                              thrust::detail::false_type>(policy,
-                                                          first,
-                                                          last,
-                                                          null_,
-                                                          compare_op);),
-     // CDP sequential impl:
-    (thrust::sort(cvt_to_seq(derived_cast(policy)), first, last, compare_op);    ));
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -641,12 +630,12 @@ sort(execution_policy<Derived>& policy,
 			thrust::sort(cvt_to_seq(derived_cast(policy)), first, last, compare_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
+  #ifdef __THRUST_HAS_CUDART__
     workaround::par(policy, first, last, compare_op);
-  #else  //THRUST_RDC_ENABLED
+  #else  //__THRUST_HAS_CUDART__
     workaround::seq(policy, first, last, compare_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND
+  #endif  //__THRUST_HAS_CUDART__
+
 }
 
 _CCCL_EXEC_CHECK_DISABLE
@@ -657,21 +646,7 @@ stable_sort(execution_policy<Derived>& policy,
             ItemsIt                    last,
             CompareOp                  compare_op)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (using item_t = thrust::iterator_value_t<ItemsIt>; item_t *null_ = nullptr;
-     __smart_sort::smart_sort<thrust::detail::false_type,
-                              thrust::detail::true_type>(policy,
-                                                         first,
-                                                         last,
-                                                         null_,
-                                                         compare_op);),
-     // CDP sequential impl:
-    (thrust::stable_sort(cvt_to_seq(derived_cast(policy)),
-                         first,
-                         last,
-                         compare_op);    ));
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -711,12 +686,11 @@ stable_sort(execution_policy<Derived>& policy,
                          compare_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
+  #ifdef __THRUST_HAS_CUDART__
     workaround::par(policy, first, last, compare_op);
-  #else  //THRUST_RDC_ENABLED
+  #else  //__THRUST_HAS_CUDART__
     workaround::seq(policy, first, last, compare_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND                         
+  #endif  //__THRUST_HAS_CUDART__                       
 }
 
 _CCCL_EXEC_CHECK_DISABLE
@@ -728,21 +702,7 @@ sort_by_key(execution_policy<Derived>& policy,
             ValuesIt                   values,
             CompareOp                  compare_op)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (__smart_sort::smart_sort<thrust::detail::true_type,
-                              thrust::detail::false_type>(policy,
-                                                          keys_first,
-                                                          keys_last,
-                                                          values,
-                                                          compare_op);),
-     // CDP sequential impl:
-    (thrust::sort_by_key(cvt_to_seq(derived_cast(policy)),
-                         keys_first,
-                         keys_last,
-                         values,
-                         compare_op);    ));
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -786,12 +746,11 @@ sort_by_key(execution_policy<Derived>& policy,
                          compare_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
+  #ifdef __THRUST_HAS_CUDART__
     workaround::par(policy, keys_first, keys_last, values, compare_op);
-  #else  //THRUST_RDC_ENABLED
+  #else  //__THRUST_HAS_CUDART__
     workaround::seq(policy, keys_first, keys_last, values, compare_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND                     
+  #endif  //__THRUST_HAS_CUDART__                    
 }
 
 _CCCL_EXEC_CHECK_DISABLE
@@ -806,21 +765,7 @@ stable_sort_by_key(execution_policy<Derived> &policy,
             ValuesIt                   values,
             CompareOp                  compare_op)
 {
-#if USE_GPU_WORKAROUND
-  NV_IF_TARGET(NV_IS_HOST,
-    (__smart_sort::smart_sort<thrust::detail::true_type,
-                              thrust::detail::true_type>(policy,
-                                                         keys_first,
-                                                         keys_last,
-                                                         values,
-                                                         compare_op);),
-     // CDP sequential impl:
-    (thrust::stable_sort_by_key(cvt_to_seq(derived_cast(policy)),
-                                keys_first,
-                                keys_last,
-                                values,
-                                compare_op);    ));
-#else  //USE_GPU_WORKAROUND
+
   struct workaround
   {
     __host__
@@ -864,12 +809,12 @@ stable_sort_by_key(execution_policy<Derived> &policy,
                                 compare_op);
     }
   };
-  #ifdef THRUST_RDC_ENABLED
+  #ifdef __THRUST_HAS_CUDART__
     workaround::par(policy, keys_first, keys_last, values, compare_op);
-  #else  //THRUST_RDC_ENABLED
+  #else  //__THRUST_HAS_CUDART__
     workaround::seq(policy, keys_first, keys_last, values, compare_op);
-  #endif  //THRUST_RDC_ENABLED
-  #endif   //USE_GPU_WORKAROUND                              
+  #endif  //__THRUST_HAS_CUDART__
+                             
 }
 #endif //USE_GPU_FUSION_THRUST
 
