@@ -285,7 +285,6 @@ template <class BufferOffsetT, class BlockOffsetT>
 struct DeviceBatchMemcpyPolicy
 {
 
-#ifdef USE_GPU_FUSION_PTX
   static constexpr uint32_t BLOCK_THREADS         = 128U;
   static constexpr uint32_t BUFFERS_PER_THREAD    = 4U;
   static constexpr uint32_t TLEV_BYTES_PER_THREAD = 8U;
@@ -295,18 +294,6 @@ struct DeviceBatchMemcpyPolicy
 
   static constexpr uint32_t WARP_LEVEL_THRESHOLD  = 128;
   static constexpr uint32_t BLOCK_LEVEL_THRESHOLD = 8 * 1024;
-#else //USE_GPU_FUSION_PTX
-  static constexpr uint32_t BLOCK_THREADS         = 256U;
-  static constexpr uint32_t BUFFERS_PER_THREAD    = 1U;
-  static constexpr uint32_t TLEV_BYTES_PER_THREAD = 1U;
-
-  static constexpr uint32_t LARGE_BUFFER_BLOCK_THREADS    = 256U;
-  static constexpr uint32_t LARGE_BUFFER_BYTES_PER_THREAD = 1U;
-
-  static constexpr uint32_t WARP_LEVEL_THRESHOLD  = 64;
-  static constexpr uint32_t BLOCK_LEVEL_THRESHOLD = 256;
-#endif ////USE_GPU_FUSION_PTX
-
 
 
   using buff_delay_constructor_t = detail::default_delay_constructor_t<BufferOffsetT>;
@@ -350,11 +337,11 @@ struct DeviceBatchMemcpyPolicy
       AgentBatchMemcpyLargeBuffersPolicy<LARGE_BUFFER_BLOCK_THREADS, LARGE_BUFFER_BYTES_PER_THREAD>;
   };
 
-#if USE_GPU_FUSION_PTX
+// #if USE_GPU_FUSION_PTX
   using MaxPolicy = Policy700;
-#else //USE_GPU_FUSION_PTX
-  using MaxPolicy = Policy350;
-#endif //USE_GPU_FUSION_PTX
+// #else //USE_GPU_FUSION_PTX
+//   using MaxPolicy = Policy350;
+// #endif //USE_GPU_FUSION_PTX
 };
 
 /**

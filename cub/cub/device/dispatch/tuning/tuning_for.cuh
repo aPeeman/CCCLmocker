@@ -51,7 +51,11 @@ struct policy_hub_t
 {
   struct policy_350_t : ChainedPolicy<350, policy_350_t, policy_350_t>
   {
+#ifdef USE_GPU_FUSION_DEFAULT_POLICY
     using for_policy_t = policy_t<256, 2>;
+#else
+    using for_policy_t = policy_t<256, 4>;
+#endif
   };
 
   using MaxPolicy = policy_350_t;

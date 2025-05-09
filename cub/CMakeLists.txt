@@ -113,12 +113,12 @@ if (CUB_ENABLE_TESTING)
   add_subdirectory(test)
 endif()
  
-# if (CUB_ENABLE_EXAMPLES)
-#   add_subdirectory(examples)
-# endif()
+if (CUB_ENABLE_EXAMPLES)
+  add_subdirectory(examples)
+endif()
 
-# if (CUB_ENABLE_BENCHMARKS OR CUB_ENABLE_TUNING)
-#   add_subdirectory(benchmarks)
-# endif()
+if (CUB_ENABLE_BENCHMARKS OR CUB_ENABLE_TUNING)
+  add_subdirectory(benchmarks)
+endif()
 
 

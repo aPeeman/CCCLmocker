@@ -35,7 +35,7 @@
 #include "catch2_test_helper.h"
 #include "catch2_test_launch_helper.h"
 
-// #define __CUDA_ARCH__ 520
+#define __CUDA_ARCH__ 520
 
 CUB_NAMESPACE_BEGIN
 

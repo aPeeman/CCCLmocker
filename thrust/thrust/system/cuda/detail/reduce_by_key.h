@@ -181,7 +181,11 @@ namespace __reduce_by_key {
 
       ITEMS_PER_THREAD =
           (MAX_INPUT_BYTES <= 8)
+#ifdef USE_GPU_FUSION_DEFAULT_POLICY          
               ? 9
+#else  //USE_GPU_FUSION_DEFAULT_POLICY
+              ? 6
+#endif //USE_GPU_FUSION_DEFAULT_POLICY
               : mpl::min<
                     int,
                     NOMINAL_4B_ITEMS_PER_THREAD,

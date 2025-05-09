@@ -120,8 +120,8 @@ endforeach()
 file(GLOB test_srcs
   RELATIVE "${CUB_SOURCE_DIR}/test"
   CONFIGURE_DEPENDS
-  # test_*.cu
-  # catch2_test_*.cu
+  test_*.cu
+  catch2_test_*.cu
   # test_device_histogram.cu
   # catch2_test_block_reduce.cu
   # catch2_test_block_load.cu
@@ -131,7 +131,7 @@ file(GLOB test_srcs
   # catch2_test_block_adjacent_difference.cu
   # catch2_test_nvrtc.cu
   # catch2_test_util_device.cu
-  catch2_test_warp_exchange_smem.cu
+
   # catch2_test_block_scan.cu
   # catch2_test_device_merge_sort.cu
   # catch2_test_device_radix_sort_custom.cu
@@ -139,6 +139,7 @@ file(GLOB test_srcs
   # catch2_test_device_segmented_radix_sort_keys.cu
   # test_device_batch_memcpy.cu
   # test_device_segmented_sort.cu
+  # catch2_test_warp_exchange_smem.cu
 )
 
 ## _cub_is_catch2_test
@@ -275,9 +276,10 @@ function(cub_add_test target_name_var test_name test_src cub_target launcher_id)
     endif() # CUB_SEPARATE_CATCH2
 
     if ("${test_target}" MATCHES "nvrtc")
-      target_compile_definitions(${test_target} PRIVATE NVRTC_CUB_PATH="-I${CMAKE_SOURCE_DIR}/cub")
-      target_compile_definitions(${test_target} PRIVATE NVRTC_THRUST_PATH="-I${CMAKE_SOURCE_DIR}/thrust")
-      target_compile_definitions(${test_target} PRIVATE NVRTC_LIBCUDACXX_PATH="-I${CMAKE_SOURCE_DIR}/libcudacxx/include")
+      get_filename_component(PARENT_DIR ${CMAKE_SOURCE_DIR} DIRECTORY)
+      target_compile_definitions(${test_target} PRIVATE NVRTC_CUB_PATH="-I${PARENT_DIR}/cub")
+      target_compile_definitions(${test_target} PRIVATE NVRTC_THRUST_PATH="-I${PARENT_DIR}/thrust")
+      target_compile_definitions(${test_target} PRIVATE NVRTC_LIBCUDACXX_PATH="-I${PARENT_DIR}/libcudacxx/include")
       target_compile_definitions(${test_target} PRIVATE NVRTC_CTK_PATH="-I${CUDAToolkit_INCLUDE_DIRS}")
     endif()
 

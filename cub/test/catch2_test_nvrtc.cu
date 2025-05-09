@@ -83,7 +83,7 @@ TEST_CASE("Test nvrtc", "[test][nvrtc]")
     "  __shared__ warp_store_storage_t warp_store_storage;                                       \n"
     "                                                                                            \n"
     "  int items[items_per_thread];                                                              \n"
-    "  if (threadIdx.x < 32)                                                                     \n"
+    "  if (threadIdx.x < 64)                                                                     \n"
     "  {                                                                                         \n"
     "    // Test warp load                                                                       \n"
     "    warp_load_t(warp_load_storage).Load(ptr, items);                                        \n"
@@ -101,7 +101,7 @@ TEST_CASE("Test nvrtc", "[test][nvrtc]")
     "                                                                                            \n"
     "    for (int i = 0; i < items_per_thread; i++)                                              \n"
     "    {                                                                                       \n"
-    "      if (items[i] != (i * 32 + threadIdx.x))                                               \n"
+    "      if (items[i] != (i * 64 + threadIdx.x))                                               \n"
     "      {                                                                                     \n"
     "        atomicAdd(errors, 1);                                                               \n"
     "      }                                                                                     \n"
@@ -111,7 +111,7 @@ TEST_CASE("Test nvrtc", "[test][nvrtc]")
     "    const int sum = warp_reduce_t(warp_reduce_storage).Sum(items[0]);                       \n"
     "    if (threadIdx.x == 0)                                                                   \n"
     "    {                                                                                       \n"
-    "      if (sum != (32 * (32 - 1) / 2))                                                       \n"
+    "      if (sum != (64 * (64 - 1) / 2))                                                       \n"
     "      {                                                                                     \n"
     "        atomicAdd(errors, 1);                                                               \n"
     "      }                                                                                     \n"
@@ -178,9 +178,11 @@ TEST_CASE("Test nvrtc", "[test][nvrtc]")
     "      atomicAdd(errors, 1);                                                                 \n"
     "    }                                                                                       \n"
     "  }                                                                                         \n"
+    "  __syncthreads();                                                                          \n"
     "                                                                                            \n"
     "  // Test block exchange                                                                    \n"
     "  block_exchange_t(block_exchange_storage).BlockedToStriped(items, items);                  \n"
+    "  __syncthreads();                                                                          \n"
     "                                                                                            \n"
     "  for (int i = 0; i < items_per_thread; i++)                                                \n"
     "  {                                                                                         \n"
@@ -189,9 +191,11 @@ TEST_CASE("Test nvrtc", "[test][nvrtc]")
     "      atomicAdd(errors, 1);                                                                 \n"
     "    }                                                                                       \n"
     "  }                                                                                         \n"
+    "  __syncthreads();                                                                          \n"
     "                                                                                            \n"
     "  // Test block reduce                                                                      \n"
     "  const int sum = block_reduce_t(block_reduce_storage).Sum(items[0]);                       \n"
+    "  __syncthreads();                                                                          \n"
     "  if (threadIdx.x == 0)                                                                     \n"
     "  {                                                                                         \n"
     "    if (sum != (threads_per_block * (threads_per_block - 1) / 2))                           \n"
@@ -199,17 +203,21 @@ TEST_CASE("Test nvrtc", "[test][nvrtc]")
     "      atomicAdd(errors, 1);                                                                 \n"
     "    }                                                                                       \n"
     "  }                                                                                         \n"
+    "  __syncthreads();                                                                          \n"
     "                                                                                            \n"
     "  // Test block scan                                                                        \n"
     "  int prefix_sum{};                                                                         \n"
     "  block_scan_t(block_scan_storage).InclusiveSum(items[0], prefix_sum);                      \n"
+    "  __syncthreads();                                                                          \n"
     "  if (prefix_sum != (threadIdx.x * (threadIdx.x + 1) / 2))                                  \n"
     "  {                                                                                         \n"
     "    atomicAdd(errors, 1);                                                                   \n"
     "  }                                                                                         \n"
+    "  __syncthreads();                                                                          \n"
     "                                                                                            \n"
     "  // Test block radix sort                                                                  \n"
     "  block_radix_sort_t(block_radix_sort_storage).SortDescending(items);                       \n"
+    "  __syncthreads();                                                                          \n"
     "                                                                                            \n"
     "  // Test block store                                                                       \n"
     "  block_store_t(block_store_storage).Store(ptr, items);                                     \n"
@@ -225,9 +233,9 @@ TEST_CASE("Test nvrtc", "[test][nvrtc]")
 
   constexpr int num_includes = 5;
   const char* includes[num_includes] = {
-    "-I../../cub",
-    "-I../../thrust",
-    "-I../../libcudacxx/include",
+    NVRTC_CUB_PATH,
+    NVRTC_THRUST_PATH,
+    NVRTC_LIBCUDACXX_PATH,
     NVRTC_CTK_PATH,
     arch.c_str()
   };

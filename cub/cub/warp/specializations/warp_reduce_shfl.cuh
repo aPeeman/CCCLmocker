@@ -732,11 +732,10 @@ struct WarpReduceShfl
                                                   LOGICAL_WARP_THREADS,
                                                   cub::Sum{});));
 #else //USE_GPU_FUSION_PTX     
-      NV_IF_TARGET(NV_PROVIDES_SM_80,
-                   (output = __reduce_add_sync(member_mask, input);),
-                   (
-                    printf("NOT SUPPORTED\n");
-                   ));                                             
+                    output = ReduceImpl<cub::Sum>(Int2Type<1>{},
+                                                  input,
+                                                  LOGICAL_WARP_THREADS,
+                                                  cub::Sum{});                                        
 #endif  //USE_GPU_FUSION_PTX
       return output;
     }
@@ -760,11 +759,10 @@ struct WarpReduceShfl
                                                   LOGICAL_WARP_THREADS,
                                                   cub::Min{});));
 #else //USE_GPU_FUSION_PTX   
-      NV_IF_TARGET(NV_PROVIDES_SM_80,
-                   (output = __reduce_min_sync(member_mask, input);),
-                   (
-                    printf("NOT SUPPORTED\n");
-                   ));
+                    output = ReduceImpl<cub::Min>(Int2Type<1>{},
+                                                  input,
+                                                  LOGICAL_WARP_THREADS,
+                                                  cub::Min{});
 #endif  //USE_GPU_FUSION_PTX
 
       return output;
@@ -789,11 +787,10 @@ struct WarpReduceShfl
                                                   LOGICAL_WARP_THREADS,
                                                   cub::Max{});));
 #else //USE_GPU_FUSION_PTX
-      NV_IF_TARGET(NV_PROVIDES_SM_80,
-                   (output = __reduce_max_sync(member_mask, input);),
-                   (
-                    printf("NOT SUPPORTED\n");                    
-                   ));
+                    output = ReduceImpl<cub::Max>(Int2Type<1>{},
+                                                  input,
+                                                  LOGICAL_WARP_THREADS,
+                                                  cub::Max{});
 #endif  //USE_GPU_FUSION_PTX
       return output;
     }

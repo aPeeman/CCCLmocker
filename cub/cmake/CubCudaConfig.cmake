@@ -1,5 +1,5 @@
 enable_language(CUDA)
-
+set(CMAKE_CUDA_HOST_LINK_LAUNCHER nvcc)
 #
 # Architecture options:
 #

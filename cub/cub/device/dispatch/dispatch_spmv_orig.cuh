@@ -442,7 +442,7 @@ struct DispatchSpmv
                 BLOCK_SCAN_WARP_SCANS>
             SegmentFixupPolicyT;
     };
-
+#ifdef USE_GPU_FUSION_DEFAULT_POLICY
     /// SM50
     struct Policy500
     {
@@ -467,7 +467,31 @@ struct DispatchSpmv
                 BLOCK_SCAN_RAKING_MEMOIZE>
             SegmentFixupPolicyT;
     };
+#else
+   struct Policy500
+    {
+        typedef AgentSpmvPolicy<
+                96,
+                7,
+                LOAD_DEFAULT,
+                LOAD_DEFAULT,
+                LOAD_DEFAULT,
+                LOAD_DEFAULT,
+                LOAD_DEFAULT,
+                false,
+                BLOCK_SCAN_WARP_SCANS>
+            SpmvPolicyT;
 
+
+        typedef AgentSegmentFixupPolicy<
+                128,
+                3,
+                BLOCK_LOAD_DIRECT,
+                LOAD_LDG,
+                BLOCK_SCAN_WARP_SCANS>
+            SegmentFixupPolicyT;
+    };
+#endif
 
     /// SM60
     struct Policy600
@@ -500,6 +524,7 @@ struct DispatchSpmv
     // Tuning policies of current PTX compiler pass
     //---------------------------------------------------------------------
 
+#ifdef USE_GPU_FUSION_DEFAULT_POLICY
 #if (CUB_PTX_ARCH >= 600)
     typedef Policy600 PtxPolicy;
 
@@ -513,6 +538,9 @@ struct DispatchSpmv
     typedef Policy350 PtxPolicy;
 
 #endif
+#else //USE_GPU_FUSION_DEFAULT_POLICY
+    typedef Policy500 PtxPolicy;
+#endif //USE_GPU_FUSION_DEFAULT_POLICY
 
     // "Opaque" policies (whose parameterizations aren't reflected in the type signature)
     struct PtxSpmvPolicyT : PtxPolicy::SpmvPolicyT {};

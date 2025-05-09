@@ -843,7 +843,8 @@ struct DeviceSegmentedSortPolicy
                                          CacheLoadModifier::LOAD_DEFAULT>>;
   };
 
-  struct Policy600 : ChainedPolicy<600, Policy600, Policy500>
+  // struct Policy600 : ChainedPolicy<600, Policy600, Policy500>
+  struct Policy600 : ChainedPolicy<600, Policy600, Policy600>
   {
     static constexpr int BLOCK_THREADS = 256;
     static constexpr int RADIX_BITS = sizeof(KeyT) > 1 ? 6 : 4;
@@ -1042,9 +1043,14 @@ struct DeviceSegmentedSortPolicy
                                          CacheLoadModifier::LOAD_DEFAULT>>;
   };
 
-  struct Policy860 : ChainedPolicy<860, Policy860, Policy800>
+  // struct Policy860 : ChainedPolicy<860, Policy860, Policy800>
+  struct Policy860 : ChainedPolicy<860, Policy860, Policy860>
   {
+#ifdef USE_GPU_FUSION_PTX
     static constexpr int BLOCK_THREADS = 256;
+#else //USE_GPU_FUSION_PTX
+    static constexpr int BLOCK_THREADS = 64;
+#endif //USE_GPU_FUSION_PTX
     static constexpr int PARTITIONING_THRESHOLD = 500;
 
     using LargeSegmentPolicy =
@@ -1440,7 +1446,6 @@ struct DispatchSegmentedSort : SelectedPolicy
       {
         // Partition input segments into size groups and assign specialized
         // kernels for each of them.
-#ifdef USE_GPU_FUSION_PTX
         error =
           SortWithPartitioning<LargeSegmentPolicyT, SmallAndMediumPolicyT>(
             DeviceSegmentedSortKernelLarge<IS_DESCENDING,
@@ -1466,9 +1471,6 @@ struct DispatchSegmentedSort : SelectedPolicy
             large_and_medium_segments_indices,
             small_segments_indices,
             group_sizes);
-#else
-    error = cudaSuccess;
-#endif
       }
       else
       {

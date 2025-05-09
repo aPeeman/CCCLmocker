@@ -126,13 +126,13 @@ endfunction()
 file(GLOB test_srcs
   RELATIVE "${CMAKE_CURRENT_LIST_DIR}"
   CONFIGURE_DEPENDS
-  # *.cu *.cpp
+  *.cu *.cpp
   # uninitialized_copy.cu
   # uninitialized_fill.cu
   # adjacent_difference.cu
   # allocator.cu
   # binary_search.cu
-  pair.cu
+  # pair.cu
 )
 
 # Add common tests to all configs:
@@ -162,9 +162,9 @@ foreach(thrust_target IN LISTS THRUST_TARGETS)
 endforeach()
 
 # Add specialized tests:
-# add_subdirectory(async)
+add_subdirectory(async)
 # add_subdirectory(cmake)
-# add_subdirectory(cpp)
-# add_subdirectory(cuda)
-# add_subdirectory(omp)
-# add_subdirectory(regression)
+add_subdirectory(cpp)
+add_subdirectory(cuda)
+add_subdirectory(omp)
+add_subdirectory(regression)
